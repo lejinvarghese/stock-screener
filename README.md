@@ -4,7 +4,9 @@ A stock bot that can evaluate your watchlist and send you a technical analysis o
 # Features
 ..more to come..stay tuned!
 
-# Curl samples
+# Sample
+![Ticker Trend](docs/sample_L.TO.png)
 
+# Curl samples
 curl --request POST --url https://api.telegram.org/bot$TELEGRAM_TOKEN/setWebhook --header 'content-type: application/json' --data '{"url": "https://2j48cpk83h.execute-api.us-east-1.amazonaws.com/dev"}'
 #https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo
