@@ -22,6 +22,7 @@ var/
 wheels/
 data/
 notebooks/
+secrets/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/

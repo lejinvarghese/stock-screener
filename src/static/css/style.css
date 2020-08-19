@@ -1,0 +1,315 @@
+html,
+body {
+    width: 100%;
+    font-family: "Nunito", "sans-serif";
+    background: #f1f1f1 url(../images/dot-background.png);
+    background-size: 70%;
+}
+
+.wrap {
+    display: flex;
+    /*            background:#f1f1f1;*/
+}
+
+.cdlBanner-Container {
+    /*width: 27%;*/
+    height: 100%;
+    /*            background:#cf0a2c;*/
+}
+
+.cdlBanner {
+    position: relative;
+    left: 0px;
+    /*width: 98%;
+    height: 85%;
+    /*    background:#cf0a2c;*/
+    /*    background:rgba(207,10,44,0.9)*/
+    /*    background:darkgray;*/
+}
+
+.cdlBanner-title {
+    position: relative;
+    /*padding: 50px;
+    /*    top:28px;*/
+    color: #f1f1f1;
+    background: #cf0a2c;
+    font-weight: 600;
+    font-size: 85px;
+    /*        -webkit-clip-path: polygon(0 0%, 100% 0%, 100% 90%, 0% 100%);*/
+    background: url(../images//Sprout-Technology.png) center no-repeat;
+    background-size: 100%;
+    height: 190px;
+    /*top: 30px;*/
+}
+
+.cdlBanner-information {
+    position: relative;
+    top: 90px;
+    padding: 30px;
+    /*    color:#f1f1f1;*/
+    color: black;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.5rem;
+}
+
+.cdlBanner-information span {
+    font-size: 26px;
+    line-height: 2.2rem;
+    font-weight: 600;
+    color: black;
+}
+
+.cdlBanner-underline {
+    margin-top: 15px;
+    width: 30%;
+    height: 6px;
+    background: black;
+    border-radius: 3px;
+}
+
+.cdl-logo {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    background: url(../images/cdl_rgb_lrg.png) center no-repeat;
+    background-size: 100%;
+    margin-top: 15px;
+    margin-left: 30px;
+}
+
+.graph-containers {
+    width: 67%;
+    padding-left: 3rem;
+    /*                background:orange;*/
+}
+
+.custom-progress {
+    margin-top: 52px;
+}
+
+.radar-containers {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    /*                background:yellow;*/
+    height: 45%;
+    padding-top: 50px;
+    box-sizing: border-box;
+    margin-bottom: 4%;
+}
+
+.radar {
+    width: 50%;
+    height: 100%;
+    /*            border:1px solid black;*/
+}
+
+.highcharts-axis-labels highcharts-xaxis-labels>text {
+    font-size: 30px;
+}
+
+.continuum-container {
+    display: flex;
+    flex-direction: column;
+    height: 50%;
+    box-sizing: border-box;
+    /*    padding-bottom:75px;*/
+}
+
+.continuum-title {
+    font-size: 26px;
+    font-weight: 600;
+    display: inline-block;
+    padding-bottom: 1.5rem
+}
+
+.continuum-title-underline {
+    height: 5px;
+    width: 100%;
+    background: black;
+    border-radius: 2.5px;
+}
+
+.continuum_ {
+    width: 100%;
+    height: 33%;
+    /*            height:auto;*/
+    /*            height:100px;*/
+    /*            background:salmon;*/
+    /*            border:1px solid black;*/
+}
+
+.plotName {
+    text-align: left;
+    font-size: 26px;
+    font-weight: 600;
+}
+
+.underline {
+    width: 80%;
+    height: 6px;
+    background: black;
+    border-radius: 3px;
+}
+
+#chartplane1 .highcharts-grid-line:last-child,
+#chartplane2 .highcharts-grid-line:last-child {
+    stroke-width: 3;
+}
+
+.chartplane {
+    padding-top: 50px;
+}
+
+.highcharts-graph {
+    stroke: none;
+}
+
+.scout-banner {
+    background: url(../images//Sprout-Technology.png) center no-repeat;
+    background-size: 100%;
+    height: 190px;
+}
+
+.progress-container {
+    margin-left: 25px;
+}
+
+
+/*//CONTINUUM//*/
+
+html,
+body {
+    width: 100%;
+    font-family: 'Nunito', "san-serif";
+}
+
+.continuumUnit {
+    display: flex;
+    margin: auto;
+    /*    justify-content: center;*/
+}
+
+.continuum-container_ {
+    position: relative;
+    /*    width:100%;*/
+    /*    width:auto;*/
+    /*    height:100px;*/
+    /*    background:#f1f1f1;*/
+    overflow: auto;
+    /*width: 850px;*/
+    overflow: visible;
+    !important
+}
+
+.continuum {
+    position: relative;
+    /*width: 850px;
+    height: 25px;*/
+    background: -webkit-linear-gradient(left, rgba(255, 255, 0, 1) 20%, rgba(255, 0, 0, 1));
+    /*Safari 5.1-6*/
+    margin: auto;
+    margin-top: 10px;
+    display: flex;
+}
+
+.continuum-bar {
+    width: 10%;
+    height: 25px;
+    background: none;
+    border-right: 1px solid #f1f1f1;
+    border-top: 1px solid #f1f1f1;
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.pointerslider-container {
+    /*width: 850px;*/
+    height: 40px;
+    /*    background:yellow;*/
+    margin: auto;
+    margin-top: 4px;
+}
+
+.pointer-container,
+.pointer-container-1,
+.pointer-container-2,
+.pointer-container-3 {
+    position: relative;
+    left: 0;
+    width: 12px;
+    height: 20px;
+    /*    background:red;*/
+}
+
+.pointer {
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid black;
+    margin: auto;
+}
+
+.continuumValue-container {
+    position: relative;
+    width: 850px;
+    height: 20px;
+    margin: auto;
+    /*    background:#DDDDDD;*/
+    color: #f1f1f1;
+}
+
+.continuumValue,
+.continuumValue-1,
+.continuumValue-2,
+.continuumValue-3 {
+    position: relative;
+    padding: 0px;
+    margin: 0px;
+}
+
+.continuumValue>p>span,
+.continuumValue-1>p>span,
+.continuumValue-2>p>span,
+.continuumValue-3>p>span {
+    background: black;
+    padding: 0 5px 0 5px;
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 1px;
+}
+
+.value-container {
+    position: relative;
+    /*width:160px;*/
+    height: 100px;
+    /*    background:#f1f1f1;*/
+    font-size: 17px;
+    line-height: 20px;
+}
+
+.value-container>p {
+    /*    padding-top:26%;*/
+    padding-top: 12%;
+    color: #ce1431;
+    text-align: left;
+}
+
+.value-container.right>p {
+    padding-top: 18%;
+    text-align: left;
+}
+
+.continuumUnit>.value-container:first-child {
+    padding-right: 10px;
+}
+
+.continuumUnit>.value-container:last-child {
+    padding-left: 10px;
+    width: 100px;
+}
+
+.highcharts-legend-item {
+    display: none;
+}
