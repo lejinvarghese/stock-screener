@@ -198,7 +198,7 @@ def analyze_ticker(ticker):
         plt.close('all')
         return ticker
 
-def run_engine(n_tickers = 15):
+def run_engine(n_tickers = 100):
     df_wl = pd.read_csv(f'{PATH}/data/inputs/my_watchlist.csv')
     watchlist = list(df_wl.Symbol.unique())[:n_tickers]
     send_text(TELEGRAM_TOKEN, TELEGRAM_ID, "Starting stock spock: ")
