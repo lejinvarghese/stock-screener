@@ -1,3 +1,5 @@
+![status](https://github.com/lejinvarghese/stock-screener/actions/workflows/pylint.yml/badge.svg)
+
 # Description
 
 A stock screener that can analyze your watchlist and send recommended stocks to a telegram channel.
