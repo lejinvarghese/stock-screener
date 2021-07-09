@@ -8,7 +8,6 @@ from functools import reduce
 from warnings import filterwarnings
 filterwarnings("ignore")
 
-
 def get_data(ticker, period = 36):
     print(f"Ticker: {ticker}")
     start_time = int(
@@ -38,7 +37,6 @@ def send_image(telegram_token, telegram_id, image):
     command = 'curl -s -X POST https://api.telegram.org/bot' + telegram_token + \
         '/sendPhoto -F chat_id=' + telegram_id + " -F photo=@" + image
     subprocess.call(command.split(' '))
-
 
 def send_message(telegram_token, telegram_id, message=''):
     command = 'https://api.telegram.org/bot' + telegram_token + \
