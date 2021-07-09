@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 import logging
+import json
 
 from flask import Flask
-import json
 from flask import render_template
 from core.analysis import run as analyze
 from core.optimizer import run as optimize
@@ -14,11 +14,17 @@ app = Flask(__name__,
 
 @app.route('/')
 def template():
+    """
+    Returns base template
+    """
     return render_template('index.html')
 
 
 @app.route('/recommend_stocks', methods=['GET'])
 def recommend_stocks():
+    """
+    Recommends stocks
+    """
     print('..enterprise has engaged..')
     pre_selected_stocks = analyze()
     print(pre_selected_stocks)
@@ -28,8 +34,10 @@ def recommend_stocks():
 
 @app.errorhandler(500)
 def server_error(e):
-    # Log the error and stacktrace.
-    logging.exception('An error occurred during a request.')
+    """
+    Log the error and stacktrace.
+    """
+    logging.exception(f'An error occurred during a request: {e}')
     return 'An internal error occurred.', 500
 
 
