@@ -5,11 +5,12 @@ Run technical and fundamental analysis
 """
 
 import os
-from dotenv import load_dotenv
 from multiprocessing import Pool, cpu_count
 from multiprocessing.pool import ThreadPool
 from warnings import filterwarnings
 
+
+from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
 from ffn.core import GroupStats
@@ -19,9 +20,9 @@ import matplotlib.dates as mdates
 from mplfinance import original_flavor as of
 
 try:
-    from core.utils import get_data, send_image, send_message
+    from core.utils import get_data, send_image, send_message, numeric_round
 except:
-    from utils import get_data, send_image, send_message
+    from utils import get_data, send_image, send_message, numeric_round
 
 filterwarnings("ignore")
 load_dotenv()
@@ -51,29 +52,28 @@ plt.rcParams["savefig.jpeg_quality"] = 100
 
 
 def get_metrics(data):
+    """
+    Get financial metrics for the ticker
+    """
     ticker = data.ticker.unique()[0]
     try:
         info = yf.Ticker(ticker).info
         info = dict(filter(lambda item: item[1] is not None, info.items()))
     except:
         info = dict()
-    t_stats = GroupStats(data["Adj Close"]).stats.to_dict(orient="dict").get("Adj Close")
+    t_stats = (
+        GroupStats(data["Adj Close"]).stats.to_dict(orient="dict").get("Adj Close")
+    )
 
-    def _round(x, n=0):
-        if isinstance(x, (int, float, complex)) and not isinstance(x, bool):
-            return round(x, n)
-        else:
-            return x
-
-    beta = _round(info.get("beta", "N/A"), 2)
-    peg = _round(info.get("pegRatio", "N/A"), 2)
-    ptb = _round(info.get("priceToBook", "N/A"), 2)
-    dividend_pt = _round(info.get("dividendRate", "N/A"), 2)
-    payout = _round(info.get("payoutRatio", "N/A"), 2)
-    calmar = _round(t_stats.get("calmar", "N/A"), 2)
-    cagr = _round(t_stats.get("cagr", "N/A"), 2)
-    monthly_sharpe = _round(t_stats.get("monthly_sharpe", "N/A"), 2)
-    monthly_sortino = _round(t_stats.get("monthly_sortino", "N/A"), 2)
+    beta = numeric_round(info.get("beta", "N/A"), 2)
+    peg = numeric_round(info.get("pegRatio", "N/A"), 2)
+    ptb = numeric_round(info.get("priceToBook", "N/A"), 2)
+    dividend_pt = numeric_round(info.get("dividendRate", "N/A"), 2)
+    payout = numeric_round(info.get("payoutRatio", "N/A"), 2)
+    calmar = numeric_round(t_stats.get("calmar", "N/A"), 2)
+    cagr = numeric_round(t_stats.get("cagr", "N/A"), 2)
+    monthly_sharpe = numeric_round(t_stats.get("monthly_sharpe", "N/A"), 2)
+    monthly_sortino = numeric_round(t_stats.get("monthly_sortino", "N/A"), 2)
 
     metrics = f"""
     \u03B2: {beta},\n
@@ -89,20 +89,10 @@ def get_metrics(data):
     return ticker, metrics
 
 
-def upload_watchlist(csv):
-    pass
-
-
-def recommend_starter_stocks(max_stock_price, industries, min_return):
-    pass
-
-
-def back_testing(stock):
-    pass
-
-
 def signals_ma(data):
-    # Heikin-Ashi advanced ohlc indicators
+    """
+    Heikin-Ashi advanced ohlc indicators
+    """
     ha_close = 0.25 * (2 * data.Close + data.Open + data.Low)
     ha_high = data[["High", "Open", "Close"]].max(axis=1)
     ha_low = data[["Low", "Open", "Close"]].min(axis=1)
@@ -128,8 +118,12 @@ def signals_ma(data):
 
     # Create moving average over  the windows
     signals["volume"] = data["Volume"]
-    signals["ma_strong_short"] = data["Adj Close"].ewm(W_MA_STRONG_SHORT, adjust=False).mean()
-    signals["ma_strong_long"] = data["Adj Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
+    signals["ma_strong_short"] = (
+        data["Adj Close"].ewm(W_MA_STRONG_SHORT, adjust=False).mean()
+    )
+    signals["ma_strong_long"] = (
+        data["Adj Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
+    )
 
     signals["ma_early_short"] = data["Close"].ewm(W_MA_EARLY_SHORT, adjust=False).mean()
     signals["ma_early_long_high"] = (
@@ -171,13 +165,17 @@ def signals_ma(data):
         0.0,
     )
     signals["positions_strong"] = signals["signal_strong_rising"].diff()
-    signals = signals.merge(data[["Adj Close", "Volume"]], left_index=True, right_index=True)
+    signals = signals.merge(
+        data[["Adj Close", "Volume"]], left_index=True, right_index=True
+    )
     return ohlc, signals
 
 
 def create_plot(signals, ohlc, metrics, ticker):
-    # Initialize the plot figure
-    fig, (ax, ax1) = plt.subplots(
+    """
+    Create the visualizations
+    """
+    fig, (ax_0, ax_1) = plt.subplots(
         nrows=2,
         ncols=1,
         figsize=(24, 16),
@@ -186,22 +184,24 @@ def create_plot(signals, ohlc, metrics, ticker):
     )
 
     # trends
-    ax.text(0.01, 0.8, metrics, va="center", transform=ax.transAxes)
-    of.candlestick_ohlc(ax, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8)
-    ax.plot(
+    ax_0.text(0.01, 0.8, metrics, va="center", transform=ax_0.transAxes)
+    of.candlestick_ohlc(
+        ax_0, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8
+    )
+    ax_0.plot(
         signals["ma_early_short"],
         color="lightgreen",
         linewidth=2,
         label=f"Close, {W_MA_EARLY_SHORT}-Day EMA",
     )
-    ax.plot(
+    ax_0.plot(
         signals["ma_early_long_high"],
         color="palegreen",
         linestyle=":",
         linewidth=1,
         label=f"High, {W_MA_EARLY_LONG}-Day SMA",
     )
-    ax.plot(
+    ax_0.plot(
         signals["ma_early_long_low"],
         color="salmon",
         linestyle=":",
@@ -209,13 +209,13 @@ def create_plot(signals, ohlc, metrics, ticker):
         label=f"Low, {W_MA_EARLY_LONG}-Day SMA",
     )
 
-    ax.plot(
+    ax_0.plot(
         signals["ma_strong_short"],
         color="seagreen",
         linewidth=2,
         label=f"Adj Close, {W_MA_STRONG_SHORT}-Day EMA",
     )
-    ax.plot(
+    ax_0.plot(
         signals["ma_strong_long"],
         color="red",
         linestyle=":",
@@ -224,7 +224,7 @@ def create_plot(signals, ohlc, metrics, ticker):
     )
 
     # ticks
-    ax.plot(
+    ax_0.plot(
         signals.loc[signals.positions_early_rising == 1.0].index,
         signals.ma_early_short[signals.positions_early_rising == 1.0],
         "^",
@@ -232,7 +232,7 @@ def create_plot(signals, ohlc, metrics, ticker):
         color="springgreen",
         label="early rising",
     )
-    ax.plot(
+    ax_0.plot(
         signals.loc[signals.positions_early_warning == 1.0].index,
         signals.ma_early_short[signals.positions_early_warning == 1.0],
         "v",
@@ -240,7 +240,7 @@ def create_plot(signals, ohlc, metrics, ticker):
         color="gold",
         label="early warning",
     )
-    ax.plot(
+    ax_0.plot(
         signals.loc[signals.positions_warning == 1.0].index,
         signals.ma_early_short[signals.positions_warning == 1.0],
         "v",
@@ -248,7 +248,7 @@ def create_plot(signals, ohlc, metrics, ticker):
         color="darkorange",
         label="strong warning",
     )
-    ax.plot(
+    ax_0.plot(
         signals.loc[signals.positions_strong == 1.0].index,
         signals.ma_strong_short[signals.positions_strong == 1.0],
         "^",
@@ -256,7 +256,7 @@ def create_plot(signals, ohlc, metrics, ticker):
         color="forestgreen",
         label="strong rising",
     )
-    ax.plot(
+    ax_0.plot(
         signals.loc[signals.positions_strong == -1.0].index,
         signals.ma_strong_short[signals.positions_strong == -1.0],
         "v",
@@ -265,12 +265,12 @@ def create_plot(signals, ohlc, metrics, ticker):
         label="strong decline",
     )
 
-    ax.set_ylabel("Price ($)")
-    ax.set_title(f"Trend for stock: {str.upper(ticker)}")
-    ax.legend(loc="upper right", bbox_to_anchor=(1.14, 1.0))
+    ax_0.set_ylabel("Price ($)")
+    ax_0.set_title(f"Trend for stock: {str.upper(ticker)}")
+    ax_0.legend(loc="upper right", bbox_to_anchor=(1.14, 1.0))
 
     # secondary graph: volume
-    ax1.bar(
+    ax_1.bar(
         x=signals.index,
         height=signals["volume"],
         color="crimson",
@@ -278,15 +278,18 @@ def create_plot(signals, ohlc, metrics, ticker):
         alpha=0.8,
         label="Volume",
     )
-    ax1.axhline(signals["volume"].tail(180).median(), linestyle=":", linewidth=1)
-    ax1.set_xlabel("Date")
-    ax1.set_ylabel("Volume")
+    ax_1.axhline(signals["volume"].tail(180).median(), linestyle=":", linewidth=1)
+    ax_1.set_xlabel("Date")
+    ax_1.set_ylabel("Volume")
     # ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
     fig.autofmt_xdate()
     plt.savefig(f"{PATH}/data/outputs/ohlc_{ticker}.png")
 
 
 def analyze_ticker(data):
+    """
+    Analyzes all tickers
+    """
     ticker, metrics = get_metrics(data)
     ohlc, signals = signals_ma(data)
 
@@ -295,7 +298,9 @@ def analyze_ticker(data):
 
     if ((curr_signal_strong_rising == 1)) & (curr_signal_warning < 1):
         create_plot(signals, ohlc, metrics, ticker)
-        send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png")
+        send_image(
+            TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png"
+        )
         plt.close("all")
         return ticker
     else:
@@ -303,17 +308,19 @@ def analyze_ticker(data):
 
 
 def run(n_tickers=100):
-    df = pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv")
-    watchlist = list(df.Symbol.unique())[:n_tickers]
+    """
+    Runs the analysis for all the provided tickers
+    """
+    df_watchlist = pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv")
+    watchlist = list(df_watchlist.Symbol.unique())[:n_tickers]
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
 
-    with ThreadPool() as tp:
-        data = tp.map(get_data, watchlist)
+    with ThreadPool() as t_pool:
+        data = t_pool.map(get_data, watchlist)
     data = list(filter(None.__ne__, data))
-
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Running Technical Analysis: ")
-    with Pool(N_PROCESS) as p:
-        pre_selected_stocks = p.map(analyze_ticker, data)
+    with Pool(N_PROCESS) as pool:
+        pre_selected_stocks = pool.map(analyze_ticker, data)
 
     pre_selected_stocks = list(filter(None.__ne__, pre_selected_stocks))
     send_message(

@@ -1,3 +1,6 @@
+"""
+Flask application that serves as the API
+"""
 #!/usr/bin/env python
 import logging
 import json

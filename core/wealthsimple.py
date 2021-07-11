@@ -31,6 +31,8 @@ def add_to_wealthsimple_watchlist(wealthsimple_client, file_name, col="Symbol"):
     local_watchlist = pd.read_csv(file_name)[col].unique().tolist()
     for ticker in local_watchlist:
         try:
-            wealthsimple_client.add_watchlist(wealthsimple_client.find_securities(ticker)["id"])
+            wealthsimple_client.add_watchlist(
+                wealthsimple_client.find_securities(ticker)["id"]
+            )
         except:
             continue
