@@ -31,11 +31,11 @@ def recommend_stocks():
 
 
 @app.errorhandler(500)
-def server_error(e):
+def server_error(error):
     """
     Log the error and stacktrace.
     """
-    logging.exception(f"An error occurred during a request: {e}")
+    logging.exception("An error occurred during a request: %s", error)
     return "An internal error occurred.", 500
 
 

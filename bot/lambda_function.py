@@ -17,15 +17,16 @@ TELEGRAM_BASE_URL = "https://api.telegram.org/bot{}".format(TELEGRAM_TOKEN)
 
 def lambda_handler(event, context):
     try:
+        # context
         data = json.loads(event["body"])
         message = str(data["message"]["text"])
         chat_id = data["message"]["chat"]["id"]
         first_name = data["message"]["chat"]["first_name"]
 
-        response = f"Please /start, {first_name}"
+        response = f"Please say Hi to start the conversation, {first_name}"
 
-        if "start" in message:
-            response = f"Hello there, {first_name}"
+        if "Hi" in message:
+            response = f"Hi there, {first_name}"
 
         data = {"text": response.encode("utf8"), "chat_id": chat_id}
         url = TELEGRAM_BASE_URL + "/sendMessage"

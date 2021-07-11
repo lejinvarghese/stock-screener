@@ -132,27 +132,43 @@ def signals_ma(data):
     signals["ma_strong_long"] = data["Adj Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
 
     signals["ma_early_short"] = data["Close"].ewm(W_MA_EARLY_SHORT, adjust=False).mean()
-    signals["ma_early_long_high"] = data["High"].rolling(window=W_MA_EARLY_LONG, min_periods=1, center=False).mean()
-    signals["ma_early_long_low"] = data["Low"].rolling(window=W_MA_EARLY_LONG, min_periods=1, center=False).mean()
+    signals["ma_early_long_high"] = (
+        data["High"].rolling(window=W_MA_EARLY_LONG, min_periods=1, center=False).mean()
+    )
+    signals["ma_early_long_low"] = (
+        data["Low"].rolling(window=W_MA_EARLY_LONG, min_periods=1, center=False).mean()
+    )
 
     # Create signals
     signals["signal_early_rising"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:] > signals["ma_early_long_high"][W_MA_EARLY_SHORT:], 1.0, 0.0
+        signals["ma_early_short"][W_MA_EARLY_SHORT:]
+        > signals["ma_early_long_high"][W_MA_EARLY_SHORT:],
+        1.0,
+        0.0,
     )
     signals["positions_early_rising"] = signals["signal_early_rising"].diff()
 
     signals["signal_early_warning"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:] < signals["ma_early_long_low"][W_MA_EARLY_SHORT:], 1.0, 0.0
+        signals["ma_early_short"][W_MA_EARLY_SHORT:]
+        < signals["ma_early_long_low"][W_MA_EARLY_SHORT:],
+        1.0,
+        0.0,
     )
     signals["positions_early_warning"] = signals["signal_early_warning"].diff()
 
     signals["signal_strong_warning"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:] < signals["ma_strong_short"][W_MA_EARLY_SHORT:], 1.0, 0.0
+        signals["ma_early_short"][W_MA_EARLY_SHORT:]
+        < signals["ma_strong_short"][W_MA_EARLY_SHORT:],
+        1.0,
+        0.0,
     )
     signals["positions_warning"] = signals["signal_strong_warning"].diff()
 
     signals["signal_strong_rising"][W_MA_STRONG_SHORT:] = np.where(
-        signals["ma_strong_short"][W_MA_STRONG_SHORT:] > signals["ma_strong_long"][W_MA_STRONG_SHORT:], 1.0, 0.0
+        signals["ma_strong_short"][W_MA_STRONG_SHORT:]
+        > signals["ma_strong_long"][W_MA_STRONG_SHORT:],
+        1.0,
+        0.0,
     )
     signals["positions_strong"] = signals["signal_strong_rising"].diff()
     signals = signals.merge(data[["Adj Close", "Volume"]], left_index=True, right_index=True)
@@ -162,13 +178,22 @@ def signals_ma(data):
 def create_plot(signals, ohlc, metrics, ticker):
     # Initialize the plot figure
     fig, (ax, ax1) = plt.subplots(
-        nrows=2, ncols=1, figsize=(24, 16), gridspec_kw={"height_ratios": [8, 1], "hspace": 0.02}, dpi=240
+        nrows=2,
+        ncols=1,
+        figsize=(24, 16),
+        gridspec_kw={"height_ratios": [8, 1], "hspace": 0.02},
+        dpi=240,
     )
 
     # trends
     ax.text(0.01, 0.8, metrics, va="center", transform=ax.transAxes)
     of.candlestick_ohlc(ax, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8)
-    ax.plot(signals["ma_early_short"], color="lightgreen", linewidth=2, label=f"Close, {W_MA_EARLY_SHORT}-Day EMA")
+    ax.plot(
+        signals["ma_early_short"],
+        color="lightgreen",
+        linewidth=2,
+        label=f"Close, {W_MA_EARLY_SHORT}-Day EMA",
+    )
     ax.plot(
         signals["ma_early_long_high"],
         color="palegreen",
@@ -184,7 +209,12 @@ def create_plot(signals, ohlc, metrics, ticker):
         label=f"Low, {W_MA_EARLY_LONG}-Day SMA",
     )
 
-    ax.plot(signals["ma_strong_short"], color="seagreen", linewidth=2, label=f"Adj Close, {W_MA_STRONG_SHORT}-Day EMA")
+    ax.plot(
+        signals["ma_strong_short"],
+        color="seagreen",
+        linewidth=2,
+        label=f"Adj Close, {W_MA_STRONG_SHORT}-Day EMA",
+    )
     ax.plot(
         signals["ma_strong_long"],
         color="red",
@@ -240,7 +270,14 @@ def create_plot(signals, ohlc, metrics, ticker):
     ax.legend(loc="upper right", bbox_to_anchor=(1.14, 1.0))
 
     # secondary graph: volume
-    ax1.bar(x=signals.index, height=signals["volume"], color="crimson", align="center", alpha=0.8, label="Volume")
+    ax1.bar(
+        x=signals.index,
+        height=signals["volume"],
+        color="crimson",
+        align="center",
+        alpha=0.8,
+        label="Volume",
+    )
     ax1.axhline(signals["volume"].tail(180).median(), linestyle=":", linewidth=1)
     ax1.set_xlabel("Date")
     ax1.set_ylabel("Volume")
@@ -282,7 +319,8 @@ def run(n_tickers=100):
     send_message(
         TELEGRAM_TOKEN,
         TELEGRAM_ID,
-        f"You have {len(pre_selected_stocks)} stocks with an active BUY rating: " + "; ".join(pre_selected_stocks),
+        f"You have {len(pre_selected_stocks)} stocks with an active BUY rating: "
+        + "; ".join(pre_selected_stocks),
     )
 
     return pre_selected_stocks

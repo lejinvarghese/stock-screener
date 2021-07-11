@@ -32,7 +32,10 @@ def get_prices(data, price_type="Adj Close"):
         i = i[[price_type]]
         i.columns = [ticker]
         prices.append(i)
-    prices = reduce(lambda df_1, df_2: pd.merge(df_1, df_2, left_index=True, right_index=True, how="outer"), prices)
+    prices = reduce(
+        lambda df_1, df_2: pd.merge(df_1, df_2, left_index=True, right_index=True, how="outer"),
+        prices,
+    )
     return prices
 
 
