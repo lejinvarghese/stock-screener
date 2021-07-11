@@ -7,25 +7,23 @@ from flask import render_template
 from core.analysis import run as analyze
 from core.optimizer import run as optimize
 
-app = Flask(__name__,
-            static_url_path='',
-            static_folder='static')
+app = Flask(__name__, static_url_path="", static_folder="static")
 
 
-@app.route('/')
+@app.route("/")
 def template():
     """
     Returns base template
     """
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-@app.route('/recommend_stocks', methods=['GET'])
+@app.route("/recommend_stocks", methods=["GET"])
 def recommend_stocks():
     """
     Recommends stocks
     """
-    print('..enterprise has engaged..')
+    print("..enterprise has engaged..")
     pre_selected_stocks = analyze()
     print(pre_selected_stocks)
     optimized_stocks = optimize(pre_selected_stocks)
@@ -37,8 +35,8 @@ def server_error(e):
     """
     Log the error and stacktrace.
     """
-    logging.exception(f'An error occurred during a request: {e}')
-    return 'An internal error occurred.', 500
+    logging.exception(f"An error occurred during a request: {e}")
+    return "An internal error occurred.", 500
 
 
 if __name__ == "__main__":
