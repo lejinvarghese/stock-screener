@@ -303,8 +303,7 @@ def analyze_ticker(data):
         )
         plt.close("all")
         return ticker
-    else:
-        return None
+    return None
 
 
 def run(n_tickers=100):
