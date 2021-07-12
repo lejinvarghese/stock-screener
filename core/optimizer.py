@@ -9,7 +9,9 @@ from multiprocessing.pool import ThreadPool
 from warnings import filterwarnings
 import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from dotenv import load_dotenv
 from pypfopt.efficient_frontier import EfficientFrontier
 from pypfopt import (
@@ -19,6 +21,7 @@ from pypfopt import (
     plotting,
     objective_functions,
 )
+from cvxpy import norm
 
 try:
     from core.utils import get_data, get_prices, send_image, send_message
@@ -40,13 +43,16 @@ TELEGRAM_BASE_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}"
 # plotting parameters
 
 
-def optimize(prices, value=1000):
+def optimize(prices, value, n_tickers=N_TICKERS):
     """
     Optimize portfolio
     """
     # expected returns and sample covariance
     hist_returns = expected_returns.ema_historical_return(prices)
-    covariance_matrix = risk_models.exp_cov(prices, log_returns=True)
+    # covariance_matrix = risk_models.exp_cov(prices, log_returns=True)
+    covariance_matrix = risk_models.CovarianceShrinkage(
+        prices, log_returns=True
+    ).ledoit_wolf()
 
     # optimize portfolio for the objectives
     ef_optimizer = EfficientFrontier(hist_returns, covariance_matrix)
@@ -61,7 +67,15 @@ def optimize(prices, value=1000):
     except:
         pass
 
-    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+    def L1_reg(w, k=1):
+        return k * norm(w, 1)
+
+    initial_weights = np.array([1 / n_tickers] * n_tickers)
+    # ef_optimizer.add_objective(L1_reg, k=2)
+    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=1)
+    ef_optimizer.add_objective(
+        objective_functions.transaction_cost, w_prev=initial_weights, k=0.02
+    )
 
     # objective to solve for
     ef_optimizer.max_sharpe()
@@ -75,9 +89,13 @@ def optimize(prices, value=1000):
     print(f"Performance: {ef_optimizer.portfolio_performance(verbose=True)}")
 
     plotting.plot_covariance(
-        risk_models.sample_cov(prices, log_returns=True),
+        covariance_matrix,
         filename=f"{PATH}/data/outputs/pf_cov_matrix.png",
     )
+    plt.close()
+    with sns.plotting_context(context="paper", font_scale=0.75):
+        sns.clustermap(covariance_matrix)
+    plt.savefig(f"{PATH}/data/outputs/pf_cov_clusters.png")
     plt.close()
 
     latest_prices = discrete_allocation.get_latest_prices(prices)
@@ -88,6 +106,7 @@ def optimize(prices, value=1000):
     print("Funds remaining: ${:.2f}".format(leftover))
 
     send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/pf_optimizer.png")
+    send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/pf_cov_clusters.png")
     send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/pf_cov_matrix.png")
     send_message(
         TELEGRAM_TOKEN,
@@ -106,7 +125,7 @@ def optimize(prices, value=1000):
     return allocation
 
 
-def run(tickers):
+def run(tickers, value=1000):
     """
     Runs the Optimization pipeline
     1. Retrieves the data
@@ -120,7 +139,7 @@ def run(tickers):
     data = list(filter(None.__ne__, data))
     prices = get_prices(data)
 
-    return [*optimize(prices, value=2500).keys()]
+    return [*optimize(prices, value=value, n_tickers=len(data)).keys()]
 
 
 if __name__ == "__main__":

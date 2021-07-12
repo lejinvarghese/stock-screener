@@ -29,7 +29,7 @@ def recommend_stocks():
     print("..enterprise has engaged..")
     pre_selected_stocks = analyze()
     print(pre_selected_stocks)
-    optimized_stocks = optimize(pre_selected_stocks)
+    optimized_stocks = optimize(pre_selected_stocks, value=1900)
     return json.dumps(optimized_stocks)
 
 

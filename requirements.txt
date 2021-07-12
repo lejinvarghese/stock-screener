@@ -9,4 +9,5 @@ yfinance
 ffn
 pandas_datareader
 cvxopt
+seaborn
 

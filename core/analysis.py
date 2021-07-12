@@ -21,8 +21,10 @@ from mplfinance import original_flavor as of
 
 try:
     from core.utils import get_data, send_image, send_message, numeric_round
+    from core.wealthsimple import get_wealthsimple_watchlist
 except:
     from utils import get_data, send_image, send_message, numeric_round
+    from wealthsimple import get_wealthsimple_watchlist
 
 filterwarnings("ignore")
 load_dotenv()
@@ -65,17 +67,24 @@ def get_metrics(data):
         GroupStats(data["Adj Close"]).stats.to_dict(orient="dict").get("Adj Close")
     )
 
-    beta = numeric_round(info.get("beta", "N/A"), 2)
-    peg = numeric_round(info.get("pegRatio", "N/A"), 2)
-    ptb = numeric_round(info.get("priceToBook", "N/A"), 2)
-    dividend_pt = numeric_round(info.get("dividendRate", "N/A"), 2)
-    payout = numeric_round(info.get("payoutRatio", "N/A"), 2)
-    calmar = numeric_round(t_stats.get("calmar", "N/A"), 2)
-    cagr = numeric_round(t_stats.get("cagr", "N/A"), 2)
-    monthly_sharpe = numeric_round(t_stats.get("monthly_sharpe", "N/A"), 2)
-    monthly_sortino = numeric_round(t_stats.get("monthly_sortino", "N/A"), 2)
+    metrics = {}
+    metrics["beta"] = beta = numeric_round(info.get("beta", "N/A"), 2)
+    metrics["peg"] = peg = numeric_round(info.get("pegRatio", "N/A"), 2)
+    metrics["ptb"] = ptb = numeric_round(info.get("priceToBook", "N/A"), 2)
+    metrics["dividend_pt"] = dividend_pt = numeric_round(
+        info.get("dividendRate", "N/A"), 2
+    )
+    metrics["payout"] = payout = numeric_round(info.get("payoutRatio", "N/A"), 2)
+    metrics["calmar"] = calmar = numeric_round(t_stats.get("calmar", "N/A"), 2)
+    metrics["cagr"] = cagr = numeric_round(t_stats.get("cagr", "N/A"), 2)
+    metrics["monthly_sharpe"] = monthly_sharpe = numeric_round(
+        t_stats.get("monthly_sharpe", "N/A"), 2
+    )
+    metrics["monthly_sortino"] = monthly_sortino = numeric_round(
+        t_stats.get("monthly_sortino", "N/A"), 2
+    )
 
-    metrics = f"""
+    metrics_summary = f"""
     \u03B2: {beta},\n
     PEG Ratio: {peg},\n
     P/B Ratio: {ptb},\n
@@ -86,7 +95,7 @@ def get_metrics(data):
     Monthly Sharpe: {monthly_sharpe}, \n
     Monthly Sortino: {monthly_sortino}
     """
-    return ticker, metrics
+    return ticker, metrics_summary, metrics
 
 
 def signals_ma(data):
@@ -171,7 +180,7 @@ def signals_ma(data):
     return ohlc, signals
 
 
-def create_plot(signals, ohlc, metrics, ticker):
+def create_plot(signals, ohlc, metrics_summary, ticker):
     """
     Create the visualizations
     """
@@ -184,7 +193,7 @@ def create_plot(signals, ohlc, metrics, ticker):
     )
 
     # trends
-    ax_0.text(0.01, 0.8, metrics, va="center", transform=ax_0.transAxes)
+    ax_0.text(0.01, 0.8, metrics_summary, va="center", transform=ax_0.transAxes)
     of.candlestick_ohlc(
         ax_0, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8
     )
@@ -290,14 +299,18 @@ def analyze_ticker(data):
     """
     Analyzes all tickers
     """
-    ticker, metrics = get_metrics(data)
+    ticker, metrics_summary, metrics = get_metrics(data)
     ohlc, signals = signals_ma(data)
 
     curr_signal_strong_rising = signals.iloc[[-1]]["signal_strong_rising"].values[0]
     curr_signal_warning = signals.iloc[[-1]]["signal_strong_warning"].values[0]
 
-    if ((curr_signal_strong_rising == 1)) & (curr_signal_warning < 1):
-        create_plot(signals, ohlc, metrics, ticker)
+    if (
+        ((curr_signal_strong_rising == 1))
+        & (curr_signal_warning < 1)
+        & (metrics.get("cagr", 0.0) >= 0.15)
+    ):
+        create_plot(signals, ohlc, metrics_summary, ticker)
         send_image(
             TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png"
         )
@@ -306,12 +319,17 @@ def analyze_ticker(data):
     return None
 
 
-def run(n_tickers=100):
+def run(n_tickers=100, mode="wealthsimple"):
     """
     Runs the analysis for all the provided tickers
     """
-    df_watchlist = pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv")
-    watchlist = list(df_watchlist.Symbol.unique())[:n_tickers]
+
+    if mode == "wealthsimple":
+        watchlist = get_wealthsimple_watchlist()[:n_tickers]
+    elif mode == "local":
+        watchlist = list(
+            pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv").Symbol.unique()
+        )[:n_tickers]
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
 
     with ThreadPool() as t_pool:
