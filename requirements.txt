@@ -10,4 +10,4 @@ ffn
 pandas_datareader
 cvxopt
 seaborn
-
+wsimple

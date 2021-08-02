@@ -32,7 +32,7 @@ load_dotenv()
 DIRECTORY = "/media/starscream/wheeljack/projects/"
 PROJECT = "stock-screener"
 PATH = os.path.join(DIRECTORY, PROJECT)
-N_PROCESS = cpu_count() - 1
+N_PROCESS = cpu_count() - 2
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_ID = os.getenv("TELEGRAM_ID")
