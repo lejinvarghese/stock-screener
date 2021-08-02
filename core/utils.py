@@ -34,16 +34,16 @@ def get_data(ticker, period=36):
         pass
 
 
-def get_prices(data, price_type="Adj Close"):
+def get_price_ticker_matrix(data, price_type="Adj Close"):
     """
     Reformats the relevant prices from tickers
     """
     prices = []
-    for i in data:
-        ticker = i.ticker.iloc[[-1]]
-        i = i[[price_type]]
-        i.columns = [ticker]
-        prices.append(i)
+    for t in data:
+        ticker = t.ticker.iloc[[-1]]
+        t = t[[price_type]]
+        t.columns = [ticker]
+        prices.append(t)
     prices = reduce(
         lambda df_1, df_2: pd.merge(
             df_1, df_2, left_index=True, right_index=True, how="outer"

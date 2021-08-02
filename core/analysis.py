@@ -102,6 +102,8 @@ def signals_ma(data):
     """
     Heikin-Ashi advanced ohlc indicators
     """
+
+    # regular indicators are replaced with the advanced heikin-ashi indicators
     ha_close = 0.25 * (2 * data.Close + data.Open + data.Low)
     ha_high = data[["High", "Open", "Close"]].max(axis=1)
     ha_low = data[["Low", "Open", "Close"]].min(axis=1)
@@ -110,11 +112,13 @@ def signals_ma(data):
     data["High"] = ha_high
     data["Low"] = ha_low
     data["Open"] = ha_open
+    del ha_close, ha_high, ha_low, ha_open
 
     data.index = pd.to_datetime(data.index)
-    dvalues = data[["Open", "High", "Low", "Close"]].values.tolist()
-    pdates = mdates.date2num(data.index)
-    ohlc = [[pdates[i]] + dvalues[i] for i in range(len(pdates))]
+    data_values = data[["Open", "High", "Low", "Close"]].values.tolist()
+    plot_dates = mdates.date2num(data.index)
+    ohlc = [[plot_dates[i]] + data_values[i] for i in range(len(plot_dates))]
+    del data_values, plot_dates
 
     # Initialize the `signals` DataFrame with the `signal` column
     signals = pd.DataFrame(index=data.index)
@@ -189,7 +193,7 @@ def create_plot(signals, ohlc, metrics_summary, ticker):
         ncols=1,
         figsize=(24, 16),
         gridspec_kw={"height_ratios": [8, 1], "hspace": 0.02},
-        dpi=240,
+        dpi=120,
     )
 
     # trends
@@ -332,12 +336,12 @@ def run(n_tickers=100, mode="wealthsimple"):
         )[:n_tickers]
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
 
-    with ThreadPool() as t_pool:
-        data = t_pool.map(get_data, watchlist)
+    with ThreadPool(N_PROCESS) as t_pool:
+        data = t_pool.map_async(get_data, watchlist).get()
     data = list(filter(None.__ne__, data))
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Running Technical Analysis: ")
     with Pool(N_PROCESS) as pool:
-        pre_selected_stocks = pool.map(analyze_ticker, data)
+        pre_selected_stocks = pool.map_async(analyze_ticker, data).get()
 
     pre_selected_stocks = list(filter(None.__ne__, pre_selected_stocks))
     send_message(

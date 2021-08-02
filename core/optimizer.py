@@ -24,9 +24,9 @@ from pypfopt import (
 from cvxpy import norm
 
 try:
-    from core.utils import get_data, get_prices, send_image, send_message
+    from core.utils import get_data, get_price_ticker_matrix, send_image, send_message
 except:
-    from utils import get_data, get_prices, send_image, send_message
+    from utils import get_data, get_price_ticker_matrix, send_image, send_message
 
 filterwarnings("ignore")
 load_dotenv()
@@ -67,8 +67,8 @@ def optimize(prices, value, n_tickers=N_TICKERS):
     except:
         pass
 
-    def L1_reg(w, k=1):
-        return k * norm(w, 1)
+    # def L1_reg(w, k=1):
+    #     return k * norm(w, 1)
 
     initial_weights = np.array([1 / n_tickers] * n_tickers)
     # ef_optimizer.add_objective(L1_reg, k=2)
@@ -137,7 +137,7 @@ def run(tickers, value=1000):
     with ThreadPool() as t_pool:
         data = t_pool.map(get_data, tickers)
     data = list(filter(None.__ne__, data))
-    prices = get_prices(data)
+    prices = get_price_ticker_matrix(data)
 
     return [*optimize(prices, value=value, n_tickers=len(data)).keys()]
 
