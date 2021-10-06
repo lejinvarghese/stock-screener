@@ -30,8 +30,7 @@ def get_data(ticker, period=36):
         # pylint: disable=unsupported-assignment-operation
         data["ticker"] = ticker
         return data
-    except Exception as error:
-        print(error)
+    except Exception:
         pass
 
 
