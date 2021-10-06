@@ -21,6 +21,7 @@ from pypfopt import (
     plotting,
     objective_functions,
 )
+
 # from cvxpy import norm
 
 try:
@@ -48,7 +49,9 @@ def optimize(prices, value, n_tickers=N_TICKERS):
     # expected returns and sample covariance
     hist_returns = expected_returns.ema_historical_return(prices)
     # covariance_matrix = risk_models.exp_cov(prices, log_returns=True)
-    covariance_matrix = risk_models.CovarianceShrinkage(prices, log_returns=True).ledoit_wolf()
+    covariance_matrix = risk_models.CovarianceShrinkage(
+        prices, log_returns=True
+    ).ledoit_wolf()
 
     # optimize portfolio for the objectives
     ef_optimizer = EfficientFrontier(hist_returns, covariance_matrix)
@@ -69,7 +72,9 @@ def optimize(prices, value, n_tickers=N_TICKERS):
     initial_weights = np.array([1 / n_tickers] * n_tickers)
     # ef_optimizer.add_objective(L1_reg, k=2)
     ef_optimizer.add_objective(objective_functions.L2_reg, gamma=1)
-    ef_optimizer.add_objective(objective_functions.transaction_cost, w_prev=initial_weights, k=0.02)
+    ef_optimizer.add_objective(
+        objective_functions.transaction_cost, w_prev=initial_weights, k=0.02
+    )
 
     # objective to solve for
     ef_optimizer.max_sharpe()

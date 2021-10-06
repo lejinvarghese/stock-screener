@@ -45,7 +45,6 @@ def get_price_ticker_matrix(data, price_type="Adj Close"):
         data_t.columns = [ticker]
         prices.append(data_t)
 
-    print(prices[:2], len(prices))
     prices = reduce(
         lambda df_1, df_2: pd.merge(
             df_1, df_2, left_index=True, right_index=True, how="outer"
