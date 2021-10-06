@@ -23,14 +23,15 @@ def get_data(ticker, period=36):
     end_time = int(mktime(date.today().timetuple()))
     try:
         # pylint: disable=line-too-long
-        url = f"https://query1.finance.yahoo.com/v7/finance/download/{ticker}?period1={start_time}&period2={end_time}&interval=1d&events=history&includeAdjustedClose=true"
+        url = f"https://query2.finance.yahoo.com/v7/finance/download/{ticker}?symbol={ticker}&period1={start_time}&period2={end_time}&interval=1d&events=history&includeAdjustedClose=true"
         data = pd.read_csv(url)
         data["Date"] = pd.to_datetime(data["Date"])
         data.set_index("Date", inplace=True)
         # pylint: disable=unsupported-assignment-operation
         data["ticker"] = ticker
         return data
-    except:
+    except Exception as error:
+        print(error)
         pass
 
 
@@ -39,11 +40,13 @@ def get_price_ticker_matrix(data, price_type="Adj Close"):
     Reformats the relevant prices from tickers
     """
     prices = []
-    for t in data:
-        ticker = t.ticker.iloc[[-1]]
-        t = t[[price_type]]
-        t.columns = [ticker]
-        prices.append(t)
+    for data_t in data:
+        ticker = data_t.ticker.iloc[[-1]]
+        data_t = data_t[[price_type]]
+        data_t.columns = [ticker]
+        prices.append(data_t)
+
+    print(prices[:2], len(prices))
     prices = reduce(
         lambda df_1, df_2: pd.merge(
             df_1, df_2, left_index=True, right_index=True, how="outer"

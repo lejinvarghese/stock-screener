@@ -21,7 +21,7 @@ from pypfopt import (
     plotting,
     objective_functions,
 )
-from cvxpy import norm
+# from cvxpy import norm
 
 try:
     from core.utils import get_data, get_price_ticker_matrix, send_image, send_message
@@ -31,9 +31,7 @@ except:
 filterwarnings("ignore")
 load_dotenv()
 
-DIRECTORY = "/media/starscream/wheeljack/projects/"
-PROJECT = "stock-screener"
-PATH = os.path.join(DIRECTORY, PROJECT)
+PATH = os.getcwd()
 N_TICKERS = 10
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -50,9 +48,7 @@ def optimize(prices, value, n_tickers=N_TICKERS):
     # expected returns and sample covariance
     hist_returns = expected_returns.ema_historical_return(prices)
     # covariance_matrix = risk_models.exp_cov(prices, log_returns=True)
-    covariance_matrix = risk_models.CovarianceShrinkage(
-        prices, log_returns=True
-    ).ledoit_wolf()
+    covariance_matrix = risk_models.CovarianceShrinkage(prices, log_returns=True).ledoit_wolf()
 
     # optimize portfolio for the objectives
     ef_optimizer = EfficientFrontier(hist_returns, covariance_matrix)
@@ -73,9 +69,7 @@ def optimize(prices, value, n_tickers=N_TICKERS):
     initial_weights = np.array([1 / n_tickers] * n_tickers)
     # ef_optimizer.add_objective(L1_reg, k=2)
     ef_optimizer.add_objective(objective_functions.L2_reg, gamma=1)
-    ef_optimizer.add_objective(
-        objective_functions.transaction_cost, w_prev=initial_weights, k=0.02
-    )
+    ef_optimizer.add_objective(objective_functions.transaction_cost, w_prev=initial_weights, k=0.02)
 
     # objective to solve for
     ef_optimizer.max_sharpe()
@@ -137,6 +131,7 @@ def run(tickers, value=1000):
     with ThreadPool() as t_pool:
         data = t_pool.map(get_data, tickers)
     data = list(filter(None.__ne__, data))
+    print(len(data), "stocks received")
     prices = get_price_ticker_matrix(data)
 
     return [*optimize(prices, value=value, n_tickers=len(data)).keys()]
