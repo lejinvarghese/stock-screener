@@ -9,6 +9,7 @@ from flask import Flask
 from flask import render_template
 from core.analyzer import run as analyze
 from core.optimizer import run as optimize
+
 # import argparse
 
 app = Flask(__name__, static_url_path="", static_folder="static")

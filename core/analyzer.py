@@ -9,7 +9,6 @@ from multiprocessing import Pool, cpu_count
 from multiprocessing.pool import ThreadPool
 from warnings import filterwarnings
 
-
 from dotenv import load_dotenv
 import numpy as np
 import pandas as pd
@@ -18,6 +17,7 @@ import yfinance as yf
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from mplfinance import original_flavor as of
+from tradingview_ta import Interval, get_multiple_analysis
 
 try:
     from core.utils import get_data, send_image, send_message, numeric_round
@@ -51,6 +51,30 @@ plt.rcParams["savefig.format"] = "png"
 plt.rcParams["savefig.jpeg_quality"] = 100
 
 
+def get_trading_view_buy_ratings(tickers):
+
+    exch_tickers = (
+        [f"nyse:{ticker}" for ticker in tickers]
+        + [f"nasdaq:{ticker}" for ticker in tickers]
+        + [f"tsx:{ticker}" for ticker in tickers]
+    )
+
+    tv_analysis = get_multiple_analysis(
+        screener="america", interval=Interval.INTERVAL_1_WEEK, symbols=exch_tickers
+    )
+    selected_stocks = []
+    for ticker in tv_analysis:
+        ticker_results = tv_analysis.get(str.upper(ticker))
+        try:
+            ticker_reco = ticker_results.summary.get("RECOMMENDATION")
+        except:
+            ticker_reco = "NA"
+
+        if "BUY" in ticker_reco:
+            selected_stocks.append(ticker.split(":")[-1])
+    return selected_stocks
+
+
 def get_metrics(data):
     """
     Get financial metrics for the ticker
@@ -61,13 +85,17 @@ def get_metrics(data):
         info = dict(filter(lambda item: item[1] is not None, info.items()))
     except:
         info = dict()
-    t_stats = GroupStats(data["Adj Close"]).stats.to_dict(orient="dict").get("Adj Close")
+    t_stats = (
+        GroupStats(data["Adj Close"]).stats.to_dict(orient="dict").get("Adj Close")
+    )
 
     metrics = {}
     metrics["beta"] = beta = numeric_round(info.get("beta", "N/A"), 2)
     metrics["peg"] = peg = numeric_round(info.get("pegRatio", "N/A"), 2)
     metrics["ptb"] = ptb = numeric_round(info.get("priceToBook", "N/A"), 2)
-    metrics["dividend_pt"] = dividend_pt = numeric_round(info.get("dividendRate", "N/A"), 2)
+    metrics["dividend_pt"] = dividend_pt = numeric_round(
+        info.get("dividendRate", "N/A"), 2
+    )
     metrics["payout"] = payout = numeric_round(info.get("payoutRatio", "N/A"), 2)
     metrics["calmar"] = calmar = numeric_round(t_stats.get("calmar", "N/A"), 2)
     metrics["cagr"] = cagr = numeric_round(t_stats.get("cagr", "N/A"), 2)
@@ -125,8 +153,12 @@ def signals_ma(data):
 
     # Create moving average over  the windows
     signals["volume"] = data["Volume"]
-    signals["ma_strong_short"] = data["Adj Close"].ewm(W_MA_STRONG_SHORT, adjust=False).mean()
-    signals["ma_strong_long"] = data["Adj Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
+    signals["ma_strong_short"] = (
+        data["Adj Close"].ewm(W_MA_STRONG_SHORT, adjust=False).mean()
+    )
+    signals["ma_strong_long"] = (
+        data["Adj Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
+    )
 
     signals["ma_early_short"] = data["Close"].ewm(W_MA_EARLY_SHORT, adjust=False).mean()
     signals["ma_early_long_high"] = (
@@ -168,7 +200,9 @@ def signals_ma(data):
         0.0,
     )
     signals["positions_strong"] = signals["signal_strong_rising"].diff()
-    signals = signals.merge(data[["Adj Close", "Volume"]], left_index=True, right_index=True)
+    signals = signals.merge(
+        data[["Adj Close", "Volume"]], left_index=True, right_index=True
+    )
     return ohlc, signals
 
 
@@ -186,7 +220,9 @@ def create_plot(signals, ohlc, metrics_summary, ticker):
 
     # trends
     ax_0.text(0.01, 0.8, metrics_summary, va="center", transform=ax_0.transAxes)
-    of.candlestick_ohlc(ax_0, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8)
+    of.candlestick_ohlc(
+        ax_0, ohlc, colorup="#77d879", colordown="#db3f3f", width=1, alpha=0.8
+    )
     ax_0.plot(
         signals["ma_early_short"],
         color="lightgreen",
@@ -289,25 +325,23 @@ def analyze_ticker(data):
     """
     Analyzes all tickers
     """
-    ticker, metrics_summary, metrics = get_metrics(data)
+    ticker, metrics_summary, _ = get_metrics(data)
     ohlc, signals = signals_ma(data)
 
-    curr_signal_strong_rising = signals.iloc[[-1]]["signal_strong_rising"].values[0]
-    curr_signal_warning = max(
-        int(signals.iloc[[-1]]["signal_strong_warning"].values[0]), 0
-        # int(signals.iloc[[-1]]["signal_early_warning"].values[0]),
-    )
+    # curr_signal_strong_rising = signals.iloc[[-1]]["signal_strong_rising"].values[0]
+    # curr_signal_warning = max(
+    #     int(signals.iloc[[-1]]["signal_strong_warning"].values[0]), 0
+    # )
 
-    if (
-        ((curr_signal_strong_rising == 1))
-        & (curr_signal_warning < 1)
-        & (metrics.get("cagr", 0.0) >= 0.10)
-    ):
-        create_plot(signals, ohlc, metrics_summary, ticker)
-        send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png")
-        plt.close("all")
-        return ticker
-    return None
+    # if (
+    #     ((curr_signal_strong_rising == 1))
+    #     & (curr_signal_warning < 1)
+    #     & (metrics.get("cagr", 0.0) >= 0.10)
+    # ):
+    create_plot(signals, ohlc, metrics_summary, ticker)
+    send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png")
+    plt.close("all")
+    return ticker
 
 
 def run(n_tickers=100, mode="wealthsimple"):
@@ -318,27 +352,32 @@ def run(n_tickers=100, mode="wealthsimple"):
     if mode == "wealthsimple":
         watchlist = get_wealthsimple_watchlist()[:n_tickers]
     elif mode == "local":
-        watchlist = list(pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv").Symbol.unique())[
-            :n_tickers
-        ]
-    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
+        watchlist = list(
+            pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv").Symbol.unique()
+        )[:n_tickers]
+    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Trading View Ratings: ")
 
-    with ThreadPool(N_PROCESS) as t_pool:
-        data = t_pool.map_async(get_data, watchlist).get()
-    data = list(filter(None.__ne__, data))
-    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Running Technical Analysis: ")
-    with Pool(N_PROCESS) as pool:
-        pre_selected_stocks = pool.map_async(analyze_ticker, data).get()
+    selected_stocks = get_trading_view_buy_ratings(watchlist)
 
-    pre_selected_stocks = list(filter(None.__ne__, pre_selected_stocks))
     send_message(
         TELEGRAM_TOKEN,
         TELEGRAM_ID,
-        f"You have {len(pre_selected_stocks)} stocks with an active BUY rating: "
-        + "; ".join(pre_selected_stocks),
+        f"You have {len(selected_stocks)} stocks with an active BUY rating: "
+        + "; ".join(selected_stocks),
     )
 
-    return pre_selected_stocks
+    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
+
+    with ThreadPool(N_PROCESS) as t_pool:
+        data = t_pool.map_async(get_data, selected_stocks).get()
+    data = list(filter(None.__ne__, data))
+    send_message(
+        TELEGRAM_TOKEN, TELEGRAM_ID, "Obtaining Additional Technical Metrics: "
+    )
+    with Pool(N_PROCESS) as pool:
+        _ = pool.map_async(analyze_ticker, data).get()
+
+    return selected_stocks
 
 
 if __name__ == "__main__":
