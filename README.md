@@ -40,7 +40,7 @@ python app.py
 
 ## Curl samples
 
-```bash
+```sh
 curl --request POST --url https://api.telegram.org/bot$TELEGRAM_TOKEN/setWebhook --header 'content-type: application/json' --data '{"url": "https://2j48cpk83h.execute-api.us-east-1.amazonaws.com/dev"}'
 #https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo
 ```
@@ -55,3 +55,5 @@ TELEGRAM_ID=XXX
 WEALTHSIMPLE_USERNAME=XXX
 WEALTHSIMPLE_PASSWORD=XXX
 ```
+
+Note: Wealthsimple has an added layer of security with an OTP (One Time Password) that you'll need to enter in the terminal everytime you run the application.
