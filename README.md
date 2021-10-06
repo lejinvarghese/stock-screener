@@ -10,7 +10,9 @@ A stock screener that can analyze your Wealthsimple (or custom) watchlist and re
 
 The selection process involves two key steps:
 
-1. Pre-selection of watchlist stocks (based on both Technical Analysis and Fundamental Indicators) to assess an active Buy signal.
+1. Pre-selection of watchlist stocks (based on Trading View 1 Week Interval technical analysis based recommendations) to assess an active Buy signal.
+    1. Trading View uses an ensemble of Lagging Indicators (Moving Averages) and Leading Indicators (Oscillators) to summarize the final recommendation.
+    2. [Sample: TSLA](https://www.tradingview.com/symbols/NASDAQ-TSLA/technicals/)
 2. Portfolio Optimization (based on Efficient Frontier techniques) for an investment value.
 
 ## Sample
