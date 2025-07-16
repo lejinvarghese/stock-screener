@@ -1,30 +1,869 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=yes">
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"> </script>
-    <script type=text/javascript> $(function() { $("#recommend_stocks").click(function (event) { $.getJSON('/recommend_stocks', { },
-    function(data) { }); return false; }); }); </script> 
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-    <title>Stock Screener</title>
-    <h1 style="font-family:sans-serif; text-align:center">Stock Screener</h1>
-    <p style="font-family:sans-serif; text-align: center">A stock screener that can analyze your watchlist and send recommended stocks to a telegram channel.</p>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Screener - AI-Powered Portfolio Optimization</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+        }
+        
+        .main-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-section h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header-section p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1565c0;
+        }
+        
+        .info-box i {
+            margin-right: 8px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            display: none;
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .section-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        
+        .section-title i {
+            margin-right: 10px;
+            color: #667eea;
+        }
+        
+        .portfolio-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .chart-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .chart-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .chart-card h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-align: center;
+        }
+        
+        .chart-image {
+            width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .allocation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .stock-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .stock-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .stock-symbol {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .stock-weight {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        .stock-shares {
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .performance-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .performance-metric {
+            margin-bottom: 15px;
+        }
+        
+        .performance-value {
+            font-size: 2em;
+            font-weight: 700;
+            display: block;
+        }
+        
+        .performance-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        
+        .stock-charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .results-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .watchlist-section {
+            margin-top: 20px;
+        }
+        
+        .watchlist-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .csv-upload-section {
+            margin: 20px 0;
+        }
+        
+        .symbols-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .symbol-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .symbol-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .symbol-text {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .remove-symbol {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .remove-symbol:hover {
+            background: #c82333;
+            transform: scale(1.1);
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                padding: 10px;
+            }
+            
+            .header-section h1 {
+                font-size: 2em;
+            }
+            
+            .portfolio-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .allocation-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stock-charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .watchlist-actions {
+                flex-direction: column;
+            }
+            
+            .watchlist-actions .btn {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
-
 <body>
-    <br>
-    <div class="container-fluid">
-        <div class="row">
-            <div class="col-4 mx-auto">
-                <button class="btn btn-primary" type="submit" id="recommend_stocks" style="font-family:sans-serif; text-align:center; width:100%; justify-content: center; display: flex;  align-items: center; ">Recommend Stocks</button>
+    <div class="main-container">
+        <div class="header-section">
+            <h1><i class="fas fa-chart-line"></i> Stock Screener</h1>
+            <p>AI-powered portfolio optimization using your custom watchlist and advanced technical analysis</p>
+        </div>
+        
+        <!-- Watchlist Management Panel -->
+        <div class="control-panel">
+            <div class="section-title">
+                <i class="fas fa-list"></i> My Watchlist
+            </div>
+            
+            <!-- Add Symbol Section -->
+            <div class="form-group">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="newSymbol" placeholder="Add symbol (e.g., AAPL)" style="flex: 1;">
+                    <button type="button" class="btn" id="addSymbolBtn" style="width: auto; padding: 15px 20px;">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Current Watchlist -->
+            <div id="watchlistSymbols" class="symbols-grid"></div>
+            
+            <!-- Actions -->
+            <div class="watchlist-actions" style="margin-top: 20px;">
+                <label for="csvFile" class="btn" style="width: auto; padding: 10px 20px; margin: 5px; background: #17a2b8; cursor: pointer; display: inline-block;">
+                    <i class="fas fa-upload"></i> Import CSV
+                </label>
+                <button type="button" class="btn" id="exportWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #28a745;">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+                <button type="button" class="btn" id="clearWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #dc3545;">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+            </div>
+            
+            <!-- Hidden CSV Upload -->
+            <input type="file" id="csvFile" accept=".csv" style="display: none;" multiple="false">
+        </div>
+        
+        <!-- Analysis Panel -->
+        <div class="control-panel">
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <strong>How it works:</strong> Manage your watchlist above, then click "Optimize Portfolio" to get recommendations based on TradingView indicators and efficient frontier techniques.
+            </div>
+            
+            <button type="button" class="btn" id="analyzeBtn">
+                <i class="fas fa-magic"></i> Optimize Portfolio
+            </button>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing your watchlist and optimizing portfolio...</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            <div class="success-message" id="success"></div>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="results-layout">
+                <div class="left-panel">
+                    <!-- Portfolio Analysis Charts -->
+                    <div class="section-card">
+                        <div class="section-title">
+                            <i class="fas fa-chart-line"></i> Portfolio Analysis
+                        </div>
+                        <div class="portfolio-grid" id="portfolioCharts"></div>
+                    </div>
+                    
+                    <!-- Performance Metrics -->
+                    <div class="section-card">
+                        <div class="section-title">
+                            <i class="fas fa-tachometer-alt"></i> Portfolio Performance
+                        </div>
+                        <div id="performanceMetrics"></div>
+                    </div>
+                </div>
+                
+                <div class="right-panel">
+                    <!-- Portfolio Allocation -->
+                    <div class="section-card">
+                        <div class="section-title">
+                            <i class="fas fa-balance-scale"></i> Portfolio Allocation
+                        </div>
+                        <div class="allocation-grid" id="stockList"></div>
+                    </div>
+                    
+                    <!-- Individual Stock Charts -->
+                    <div class="section-card" id="stockChartsSection" style="display: none;">
+                        <div class="section-title">
+                            <i class="fas fa-chart-area"></i> Technical Analysis
+                        </div>
+                        <div class="stock-charts-grid" id="stockCharts"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    <br>
-    </body>
-
-
+    
+    <script>
+        // Watchlist Management
+        let currentWatchlist = [];
+        
+        // Load watchlist on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadWatchlist();
+            
+            // Setup file upload event listener
+            const fileInput = document.getElementById('csvFile');
+            if (fileInput) {
+                console.log('Setting up file upload listener');
+                fileInput.addEventListener('change', async function(e) {
+                    console.log('File selected:', e.target.files[0]);
+                    const file = e.target.files[0];
+                    if (file) {
+                        console.log('Reading file:', file.name);
+                        const reader = new FileReader();
+                        reader.onload = async function(e) {
+                            const csvContent = e.target.result;
+                            console.log('CSV content length:', csvContent.length);
+                            console.log('CSV preview:', csvContent.substring(0, 100));
+                            
+                            try {
+                                const response = await fetch('/watchlist/import', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ csv_content: csvContent })
+                                });
+                                
+                                const data = await response.json();
+                                console.log('Import response:', data);
+                                
+                                if (response.ok) {
+                                    showMessage(data.message, 'success');
+                                    loadWatchlist();
+                                } else {
+                                    showMessage(data.error, 'error');
+                                }
+                            } catch (err) {
+                                console.error('Import error:', err);
+                                showMessage('Network error. Please try again.', 'error');
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                });
+            } else {
+                console.log('File input not found');
+            }
+            
+            // Setup analyze button
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            if (analyzeBtn) {
+                console.log('Setting up analyze button');
+                analyzeBtn.addEventListener('click', async function() {
+                    console.log('Analyze button clicked');
+                    const loading = document.getElementById('loading');
+                    const error = document.getElementById('error');
+                    const success = document.getElementById('success');
+                    const results = document.getElementById('results');
+                    
+                    // Reset UI
+                    loading.style.display = 'none';
+                    error.style.display = 'none';
+                    success.style.display = 'none';
+                    results.style.display = 'none';
+                    
+                    // Show loading state
+                    loading.style.display = 'block';
+                    analyzeBtn.disabled = true;
+                    
+                    try {
+                        console.log('Making request to /recommend_stocks/');
+                        const response = await fetch('/recommend_stocks/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        
+                        console.log('Response status:', response.status);
+                        const data = await response.json();
+                        console.log('Response data:', data);
+                        
+                        if (response.ok) {
+                            displayResults(data);
+                            results.style.display = 'block';
+                        } else {
+                            showMessage(data.error || 'An error occurred', 'error');
+                        }
+                    } catch (err) {
+                        console.error('Analyze error:', err);
+                        showMessage('Network error. Please try again.', 'error');
+                    } finally {
+                        loading.style.display = 'none';
+                        analyzeBtn.disabled = false;
+                    }
+                });
+            } else {
+                console.log('Analyze button not found');
+            }
+        });
+        
+        // Add symbol to watchlist
+        document.getElementById('addSymbolBtn').addEventListener('click', async function() {
+            const symbol = document.getElementById('newSymbol').value.trim().toUpperCase();
+            if (!symbol) return;
+            
+            try {
+                const response = await fetch('/watchlist/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ symbol })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    document.getElementById('newSymbol').value = '';
+                    loadWatchlist();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (err) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+        
+        // Load watchlist
+        document.getElementById('loadWatchlistBtn').addEventListener('click', loadWatchlist);
+        
+        async function loadWatchlist() {
+            try {
+                const response = await fetch('/watchlist/');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentWatchlist = data.symbols;
+                    displayWatchlist(currentWatchlist);
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (err) {
+                showMessage('Failed to load watchlist', 'error');
+            }
+        }
+        
+        // Display watchlist
+        function displayWatchlist(symbols) {
+            const container = document.getElementById('watchlistSymbols');
+            container.innerHTML = '';
+            
+            if (symbols.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No symbols in watchlist</p>';
+                return;
+            }
+            
+            symbols.forEach(symbol => {
+                const symbolItem = document.createElement('div');
+                symbolItem.className = 'symbol-item';
+                symbolItem.innerHTML = `
+                    <span class="symbol-text">${symbol}</span>
+                    <button class="remove-symbol" onclick="removeSymbol('${symbol}')">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                container.appendChild(symbolItem);
+            });
+        }
+        
+        // Remove symbol from watchlist
+        async function removeSymbol(symbol) {
+            try {
+                const response = await fetch('/watchlist/remove', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ symbol })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    loadWatchlist();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (err) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        }
+        
+        // Clear watchlist
+        document.getElementById('clearWatchlistBtn').addEventListener('click', async function() {
+            if (!confirm('Are you sure you want to clear all symbols from the watchlist?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/watchlist/clear', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage(data.message, 'success');
+                    loadWatchlist();
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            } catch (err) {
+                showMessage('Network error. Please try again.', 'error');
+            }
+        });
+        
+        // Export watchlist
+        document.getElementById('exportWatchlistBtn').addEventListener('click', function() {
+            window.location.href = '/watchlist/export';
+        });
+        
+        // Import CSV event listener is now in DOMContentLoaded above
+        
+        // File upload event listener is now in DOMContentLoaded above
+        
+        // Add Enter key support for new symbol input
+        document.getElementById('newSymbol').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('addSymbolBtn').click();
+            }
+        });
+        
+        // Analyze Portfolio event listener is now in DOMContentLoaded above
+        
+        // Show message function
+        function showMessage(message, type) {
+            const errorDiv = document.getElementById('error');
+            const successDiv = document.getElementById('success');
+            
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            
+            if (type === 'error') {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            } else {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+            }
+            
+            // Hide message after 3 seconds
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        function displayResults(data) {
+            const stockList = document.getElementById('stockList');
+            const portfolioCharts = document.getElementById('portfolioCharts');
+            const stockCharts = document.getElementById('stockCharts');
+            const stockChartsSection = document.getElementById('stockChartsSection');
+            const performanceMetrics = document.getElementById('performanceMetrics');
+            
+            // Clear existing content
+            stockList.innerHTML = '';
+            portfolioCharts.innerHTML = '';
+            stockCharts.innerHTML = '';
+            performanceMetrics.innerHTML = '';
+            
+            console.log('Portfolio data:', data.portfolio);
+            
+            // Display portfolio charts
+            if (data.images) {
+                const chartTitles = {
+                    'efficient_frontier': 'Efficient Frontier',
+                    'covariance_matrix': 'Covariance Matrix',
+                    'covariance_clusters': 'Covariance Clusters'
+                };
+                
+                Object.entries(data.images).forEach(([key, imagePath]) => {
+                    const chartCard = document.createElement('div');
+                    chartCard.className = 'chart-card';
+                    chartCard.innerHTML = `
+                        <h4>${chartTitles[key] || key}</h4>
+                        <img src="${imagePath}" alt="${chartTitles[key] || key}" class="chart-image">
+                    `;
+                    portfolioCharts.appendChild(chartCard);
+                });
+            }
+            
+            // Display performance metrics
+            if (data.portfolio && data.portfolio.performance) {
+                const [expectedReturn, volatility, sharpe] = data.portfolio.performance;
+                performanceMetrics.innerHTML = `
+                    <div class="performance-card">
+                        <div class="performance-metric">
+                            <span class="performance-value">${(expectedReturn * 100).toFixed(2)}%</span>
+                            <span class="performance-label">Expected Annual Return</span>
+                        </div>
+                        <div class="performance-metric">
+                            <span class="performance-value">${(volatility * 100).toFixed(2)}%</span>
+                            <span class="performance-label">Volatility</span>
+                        </div>
+                        <div class="performance-metric">
+                            <span class="performance-value">${sharpe.toFixed(2)}</span>
+                            <span class="performance-label">Sharpe Ratio</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Display portfolio allocation
+            if (data.portfolio && data.portfolio.weights) {
+                Object.entries(data.portfolio.weights).forEach(([symbol, weight]) => {
+                    const shares = data.portfolio.allocation[symbol] || 0;
+                    const stockItem = document.createElement('div');
+                    stockItem.className = 'stock-item';
+                    stockItem.innerHTML = `
+                        <span class="stock-symbol">${symbol}</span>
+                        <span class="stock-weight">${(weight * 100).toFixed(2)}%</span>
+                        <div class="stock-shares">${shares} shares</div>
+                    `;
+                    stockList.appendChild(stockItem);
+                });
+            }
+            
+            // Display individual stock charts
+            if (data.stock_charts && data.stock_charts.length > 0) {
+                stockChartsSection.style.display = 'block';
+                data.stock_charts.forEach(stockChart => {
+                    const chartCard = document.createElement('div');
+                    chartCard.className = 'chart-card';
+                    chartCard.innerHTML = `
+                        <h4>${stockChart.symbol}</h4>
+                        <img src="${stockChart.chart}" alt="${stockChart.symbol} Chart" class="chart-image">
+                    `;
+                    stockCharts.appendChild(chartCard);
+                });
+            }
+        }
+    </script>
+</body>
 </html>
