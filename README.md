@@ -29,12 +29,25 @@ Covariance Matrix:
 Covariance Matrix (Cluster Map):
 ![Covariance Cluster Map](docs/pf_cov_clusters.png)
 
-## Run
+## Setup & Run
 
+### Prerequisites
+- [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
+### Installation
 ```sh
-python -m venv .venv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv venv --python 3.13
+
 source .venv/bin/activate
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+
+# Create .env file with required variables
+```
+
+### Run
+```sh
+source .venv/bin/activate
 python app.py
 ```
 
