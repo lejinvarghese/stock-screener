@@ -14,9 +14,11 @@ import numpy as np
 import pandas as pd
 from ffn.core import GroupStats
 import yfinance as yf
+
 # Set matplotlib backend before importing pyplot to avoid GUI issues in threads
 import matplotlib
-matplotlib.use('Agg')  # Use non-GUI backend for thread safety
+
+matplotlib.use("Agg")  # Use non-GUI backend for thread safety
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from mplfinance import original_flavor as of
@@ -62,10 +64,18 @@ plt.rcParams["savefig.format"] = "png"
 
 
 def get_trading_view_buy_ratings(tickers):
-    console.print(Panel(f"[bold cyan]Getting TradingView ratings for tickers:[/bold cyan] {', '.join(tickers[:5])}{'...' if len(tickers) > 5 else ''}", title="TradingView Analysis", border_style="cyan"))
-    
+    console.print(
+        Panel(
+            f"[bold cyan]Getting TradingView ratings for tickers:[/bold cyan] {', '.join(tickers[:5])}{'...' if len(tickers) > 5 else ''}",
+            title="TradingView Analysis",
+            border_style="cyan",
+        )
+    )
+
     if not tickers or len(tickers) == 0:
-        console.print("[yellow]WARNING: No tickers provided for TradingView analysis[/yellow]")
+        console.print(
+            "[yellow]WARNING: No tickers provided for TradingView analysis[/yellow]"
+        )
         return []
 
     exch_tickers = (
@@ -73,20 +83,22 @@ def get_trading_view_buy_ratings(tickers):
         + [f"nasdaq:{ticker}" for ticker in tickers]
         + [f"tsx:{ticker}" for ticker in tickers]
     )
-    
+
     console.print(f"[dim]Exchange tickers: {exch_tickers[:5]}...[/dim]")
 
     try:
         tv_analysis = get_multiple_analysis(
             screener="america", interval=Interval.INTERVAL_1_WEEK, symbols=exch_tickers
         )
-        console.print(f"[green]TradingView analysis completed for {len(tv_analysis)} tickers[/green]")
+        console.print(
+            f"[green]TradingView analysis completed for {len(tv_analysis)} tickers[/green]"
+        )
     except Exception as e:
         console.print(f"[red]ERROR: TradingView analysis failed: {e}[/red]")
         # Return a subset of the original tickers as fallback
         console.print("[yellow]Using fallback tickers...[/yellow]")
         return tickers[:5]  # Return first 5 tickers as fallback
-    
+
     selected_stocks = []
     for ticker in tv_analysis:
         ticker_results = tv_analysis.get(str.upper(ticker))
@@ -97,21 +109,25 @@ def get_trading_view_buy_ratings(tickers):
 
         if "BUY" in ticker_reco:
             selected_stocks.append(ticker.split(":")[-1])
-    
+
     if selected_stocks:
-        table = Table(title="Stocks with BUY Rating", show_header=True, header_style="bold green")
+        table = Table(
+            title="Stocks with BUY Rating", show_header=True, header_style="bold green"
+        )
         table.add_column("Stock Symbol", style="cyan")
         for stock in selected_stocks:
             table.add_row(stock)
         console.print(table)
     else:
         console.print("[yellow]WARNING: No stocks with BUY rating found[/yellow]")
-    
+
     # If no BUY recommendations found, return a sample of original tickers
     if not selected_stocks:
-        console.print("[yellow]No BUY recommendations found, returning sample of original tickers[/yellow]")
+        console.print(
+            "[yellow]No BUY recommendations found, returning sample of original tickers[/yellow]"
+        )
         selected_stocks = tickers[:3]  # Return first 3 as fallback
-        
+
     return selected_stocks
 
 
@@ -125,9 +141,7 @@ def get_metrics(data):
         info = dict(filter(lambda item: item[1] is not None, info.items()))
     except:
         info = dict()
-    t_stats = (
-        GroupStats(data["Close"]).stats.to_dict(orient="dict").get("Close")
-    )
+    t_stats = GroupStats(data["Close"]).stats.to_dict(orient="dict").get("Close")
 
     metrics = {}
     metrics["beta"] = beta = numeric_round(info.get("beta", "N/A"), 2)
@@ -147,7 +161,7 @@ def get_metrics(data):
     )
 
     metrics_summary = f"""
-    \u03B2: {beta},\n
+    \u03b2: {beta},\n
     PEG Ratio: {peg},\n
     P/B Ratio: {ptb},\n
     Dividend rate: {dividend_pt},\n
@@ -196,9 +210,7 @@ def signals_ma(data):
     signals["ma_strong_short"] = (
         data["Close"].ewm(W_MA_STRONG_SHORT, adjust=False).mean()
     )
-    signals["ma_strong_long"] = (
-        data["Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
-    )
+    signals["ma_strong_long"] = data["Close"].ewm(W_MA_STRONG_LONG, adjust=False).mean()
 
     signals["ma_early_short"] = data["Close"].ewm(W_MA_EARLY_SHORT, adjust=False).mean()
     signals["ma_early_long_high"] = (
@@ -360,6 +372,7 @@ def create_plot(signals, ohlc, metrics_summary, ticker):
     fig.autofmt_xdate()
     # Create output directory if it doesn't exist
     import os
+
     os.makedirs(f"{PATH}/data/outputs", exist_ok=True)
     plt.savefig(f"{PATH}/data/outputs/ohlc_{ticker}.png")
 
@@ -395,31 +408,52 @@ def run(n_tickers=100, mode="wealthsimple"):
     if mode == "wealthsimple":
         watchlist = get_custom_watchlist()[:n_tickers]
         if watchlist:
-            table = Table(title="Custom Watchlist", show_header=True, header_style="bold blue")
+            table = Table(
+                title="Custom Watchlist", show_header=True, header_style="bold blue"
+            )
             table.add_column("Stock Symbol", style="cyan")
             for stock in watchlist[:10]:  # Show first 10
                 table.add_row(stock)
             if len(watchlist) > 10:
                 table.add_row(f"... and {len(watchlist) - 10} more")
             console.print(table)
-        console.print(f"[blue]Watchlist contains {len(watchlist) if watchlist else 0} stocks[/blue]")
-        
+        console.print(
+            f"[blue]Watchlist contains {len(watchlist) if watchlist else 0} stocks[/blue]"
+        )
+
         # Fallback to sample stocks if watchlist is empty
         if not watchlist or len(watchlist) == 0:
-            console.print("[yellow]WARNING: Watchlist is empty, using sample stocks[/yellow]")
-            watchlist = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "NVDA", "META", "NFLX"][:n_tickers]
-            
+            console.print(
+                "[yellow]WARNING: Watchlist is empty, using sample stocks[/yellow]"
+            )
+            watchlist = [
+                "AAPL",
+                "GOOGL",
+                "MSFT",
+                "TSLA",
+                "AMZN",
+                "NVDA",
+                "META",
+                "NFLX",
+            ][:n_tickers]
+
     elif mode == "local":
         watchlist = list(
             pd.read_csv(f"{PATH}/data/inputs/my_watchlist.csv").Symbol.unique()
         )[:n_tickers]
-        
-    console.print(Panel(f"[bold green]Final watchlist for analysis:[/bold green] {', '.join(watchlist)}", title="Analysis Target", border_style="green"))
-    
+
+    console.print(
+        Panel(
+            f"[bold green]Final watchlist for analysis:[/bold green] {', '.join(watchlist)}",
+            title="Analysis Target",
+            border_style="green",
+        )
+    )
+
     if not watchlist or len(watchlist) == 0:
         console.print("[red]ERROR: No stocks available for analysis[/red]")
         raise ValueError("No stocks available for analysis")
-        
+
     send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Trading View Ratings: ")
 
     selected_stocks = get_trading_view_buy_ratings(watchlist)

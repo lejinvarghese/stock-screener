@@ -272,6 +272,20 @@
             margin-top: 5px;
         }
         
+        .stock-industry {
+            color: #17a2b8;
+            font-size: 0.85em;
+            margin-top: 3px;
+            font-style: italic;
+        }
+        
+        .stock-sector {
+            color: #28a745;
+            font-size: 0.8em;
+            margin-top: 2px;
+            font-weight: 500;
+        }
+        
         .performance-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -799,7 +813,6 @@
             if (data.images) {
                 const chartTitles = {
                     'efficient_frontier': 'Efficient Frontier',
-                    'covariance_matrix': 'Covariance Matrix',
                     'covariance_clusters': 'Covariance Clusters'
                 };
                 
@@ -839,14 +852,27 @@
             if (data.portfolio && data.portfolio.weights) {
                 Object.entries(data.portfolio.weights).forEach(([symbol, weight]) => {
                     const shares = data.portfolio.allocation[symbol] || 0;
-                    const stockItem = document.createElement('div');
-                    stockItem.className = 'stock-item';
-                    stockItem.innerHTML = `
-                        <span class="stock-symbol">${symbol}</span>
-                        <span class="stock-weight">${(weight * 100).toFixed(2)}%</span>
-                        <div class="stock-shares">${shares} shares</div>
-                    `;
-                    stockList.appendChild(stockItem);
+                    
+                    // Only show stocks with allocation > 0.01% (avoid tiny fractional allocations)
+                    if (weight > 0.0001) {
+                        const stockInfo = data.stock_info && data.stock_info[symbol];
+                        const industry = stockInfo ? stockInfo.industry : 'N/A';
+                        const sector = stockInfo ? stockInfo.sector : 'N/A';
+                        const shortName = stockInfo ? stockInfo.shortName : symbol;
+                        
+                        const stockItem = document.createElement('div');
+                        stockItem.className = 'stock-item';
+                        stockItem.innerHTML = `
+                            <div>
+                                <span class="stock-symbol">${symbol}</span>
+                                <span class="stock-weight">${(weight * 100).toFixed(3)}%</span>
+                                <div class="stock-shares">${shares} shares</div>
+                                <div class="stock-industry">${industry}</div>
+                                <div class="stock-sector">${sector}</div>
+                            </div>
+                        `;
+                        stockList.appendChild(stockItem);
+                    }
                 });
             }
             
