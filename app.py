@@ -6,7 +6,7 @@ Flask application that serves as the API
 import logging
 import json
 import os
-
+import argparse
 import matplotlib
 
 matplotlib.use("Agg")
@@ -80,8 +80,17 @@ def recommend_stocks():
     Recommends stocks using custom watchlist (no OTP required)
     """
     try:
+        # Get parameters from request
+        data = request.get_json() or {}
+        threshold = data.get("threshold", 0.05)
+        budget = data.get("budget", 1000)
+
+        console.print(
+            f"[blue]Portfolio parameters: {threshold} threshold, ${budget} budget[/blue]"
+        )
+
         # Use custom watchlist instead of Wealthsimple
-        pre_selected_stocks = analyze()
+        pre_selected_stocks = analyze(send_telegram=False)
         console.print(
             Panel(
                 f"[bold cyan]Pre-selected stocks:[/bold cyan] {', '.join(pre_selected_stocks)}",
@@ -89,7 +98,9 @@ def recommend_stocks():
                 border_style="cyan",
             )
         )
-        optimized_stocks = optimize(pre_selected_stocks, value=1000)
+        optimized_stocks = optimize(
+            pre_selected_stocks, budget=budget, cutoff=threshold, send_telegram=False
+        )
         console.print(
             Panel(
                 f"[bold green]Portfolio optimization completed![/bold green]",
@@ -161,7 +172,6 @@ def recommend_stocks():
         return jsonify({"error": str(e)}), 500
 
 
-# Watchlist management routes
 @app.route("/watchlist/", methods=["GET"])
 def get_watchlist():
     """Get current watchlist symbols"""
@@ -279,6 +289,34 @@ def export_watchlist():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/get_company_names", methods=["POST"])
+def get_company_names():
+    """Get company names for given symbols"""
+    try:
+        symbols = request.json.get("symbols", [])
+        if not symbols:
+            return jsonify({"error": "No symbols provided"}), 400
+
+        import yfinance as yf
+
+        company_names = {}
+
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                company_names[symbol] = info.get(
+                    "shortName", info.get("longName", symbol)
+                )
+            except Exception as e:
+                console.print(f"[yellow]Could not get name for {symbol}: {e}[/yellow]")
+                company_names[symbol] = symbol
+
+        return jsonify({"company_names": company_names})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.errorhandler(500)
 def server_error(error):
     """
@@ -289,15 +327,18 @@ def server_error(error):
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--budget", type=int)
-    # args = parser.parse_args()
-    # app.config["budget"] = args.budget
-    console.print(
-        Panel(
-            f"[bold green]Stock Screener Flask App Starting![/bold green]\n[blue]Server running on: http://0.0.0.0:5004[/blue]\n[yellow]Ready to analyze portfolios![/yellow]",
-            title="Stock Screener",
-            border_style="green",
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--port", type=int, default=5004, help="Port to run the server on"
         )
-    )
-    app.run(host="0.0.0.0", port=5004, debug=True)
+        args = parser.parse_args()
+        port = args.port
+        console.print(
+            Panel(
+                f"[bold green]Stock Screener Flask App Starting![/bold green]\n[blue]Server running on: http://0.0.0.0:{port}[/blue]\n[yellow]Ready to analyze portfolios![/yellow]",
+                title="Stock Screener",
+                border_style="green",
+            )
+        )
+        app.run(host="0.0.0.0", port=port, debug=True)

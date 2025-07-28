@@ -77,7 +77,7 @@ def get_trading_view_buy_ratings(tickers):
             "[yellow]WARNING: No tickers provided for TradingView analysis[/yellow]"
         )
         return []
-
+    tickers = [ticker.split("-")[0] for ticker in tickers]
     exch_tickers = (
         [f"nyse:{ticker}" for ticker in tickers]
         + [f"nasdaq:{ticker}" for ticker in tickers]
@@ -88,7 +88,7 @@ def get_trading_view_buy_ratings(tickers):
 
     try:
         tv_analysis = get_multiple_analysis(
-            screener="america", interval=Interval.INTERVAL_1_WEEK, symbols=exch_tickers
+            screener="america", interval=Interval.INTERVAL_1_DAY, symbols=exch_tickers
         )
         console.print(
             f"[green]TradingView analysis completed for {len(tv_analysis)} tickers[/green]"
@@ -100,15 +100,31 @@ def get_trading_view_buy_ratings(tickers):
         return tickers[:5]  # Return first 5 tickers as fallback
 
     selected_stocks = []
+    console.print("[blue]Processing TradingView recommendations:[/blue]")
+
     for ticker in tv_analysis:
         ticker_results = tv_analysis.get(str.upper(ticker))
         try:
             ticker_reco = ticker_results.summary.get("RECOMMENDATION")
+            oscillators = ticker_results.oscillators
+            osc_buy_ratio = oscillators["BUY"] / (
+                oscillators["BUY"] + oscillators["SELL"]
+            )
         except:
             ticker_reco = "NA"
+            osc_buy_ratio = 0
 
-        if "BUY" in ticker_reco:
-            selected_stocks.append(ticker.split(":")[-1])
+        clean_ticker = ticker.split(":")[-1]
+
+        if "BUY" in ticker_reco and osc_buy_ratio > 0.5:
+            console.print(
+                f"[green]✓ {clean_ticker}: {ticker_reco} (Osc: {osc_buy_ratio:.2%}) - SELECTED[/green]"
+            )
+            selected_stocks.append(clean_ticker)
+        else:
+            console.print(
+                f"[dim]✗ {clean_ticker}: {ticker_reco} (Osc: {osc_buy_ratio:.2%}) - SKIPPED[/dim]"
+            )
 
     if selected_stocks:
         table = Table(
@@ -377,7 +393,7 @@ def create_plot(signals, ohlc, metrics_summary, ticker):
     plt.savefig(f"{PATH}/data/outputs/ohlc_{ticker}.png")
 
 
-def analyze_ticker(data):
+def analyze_ticker(data, send_telegram=True):
     """
     Analyzes all tickers
     """
@@ -395,12 +411,15 @@ def analyze_ticker(data):
     #     & (metrics.get("cagr", 0.0) >= 0.10)
     # ):
     create_plot(signals, ohlc, metrics_summary, ticker)
-    send_image(TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png")
+    if send_telegram:
+        send_image(
+            TELEGRAM_TOKEN, TELEGRAM_ID, f"{PATH}/data/outputs/ohlc_{ticker}.png"
+        )
     plt.close("all")
     return ticker
 
 
-def run(n_tickers=100, mode="wealthsimple"):
+def run(n_tickers=100, mode="wealthsimple", send_telegram=True):
     """
     Runs the analysis for all the provided tickers
     """
@@ -454,27 +473,37 @@ def run(n_tickers=100, mode="wealthsimple"):
         console.print("[red]ERROR: No stocks available for analysis[/red]")
         raise ValueError("No stocks available for analysis")
 
-    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Trading View Ratings: ")
+    if send_telegram:
+        send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Trading View Ratings: ")
 
     selected_stocks = get_trading_view_buy_ratings(watchlist)
 
-    send_message(
-        TELEGRAM_TOKEN,
-        TELEGRAM_ID,
-        f"You have {len(selected_stocks)} stocks with an active BUY rating: "
-        + "; ".join(selected_stocks),
-    )
+    if send_telegram:
+        send_message(
+            TELEGRAM_TOKEN,
+            TELEGRAM_ID,
+            f"You have {len(selected_stocks)} stocks with an active BUY rating: "
+            + "; ".join(selected_stocks),
+        )
 
-    send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
+    if send_telegram:
+        send_message(TELEGRAM_TOKEN, TELEGRAM_ID, "Retrieving Performance History: ")
 
     with ThreadPool(N_PROCESS) as t_pool:
         data = t_pool.map_async(get_data, selected_stocks).get()
     data = list(filter(None.__ne__, data))
-    send_message(
-        TELEGRAM_TOKEN, TELEGRAM_ID, "Obtaining Additional Technical Metrics: "
-    )
+    if send_telegram:
+        send_message(
+            TELEGRAM_TOKEN, TELEGRAM_ID, "Obtaining Additional Technical Metrics: "
+        )
+
+    # Create a partial function to pass send_telegram to analyze_ticker
+    from functools import partial
+
+    analyze_ticker_with_telegram = partial(analyze_ticker, send_telegram=send_telegram)
+
     with Pool(N_PROCESS) as pool:
-        _ = pool.map_async(analyze_ticker, data).get()
+        _ = pool.map_async(analyze_ticker_with_telegram, data).get()
 
     return selected_stocks
 

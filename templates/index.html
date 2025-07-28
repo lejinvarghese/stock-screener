@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Screener - AI-Powered Portfolio Optimization</title>
+    <title>Portfolio Optimizer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📈</text></svg>">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -423,49 +425,177 @@
                 width: 100%;
             }
         }
+        
+        .collapsible-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 5px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .collapsible-header:hover {
+            color: #667eea;
+        }
+        
+        .collapse-icon {
+            transition: transform 0.3s ease;
+            color: #667eea;
+        }
+        
+        .collapse-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+        
+        .collapsible-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .collapsible-content.collapsed {
+            max-height: 0;
+        }
+        
+        .collapsible-content.expanded {
+            max-height: none;
+        }
+        
+        .symbols-grid {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        /* Image zoom modal styles */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .image-modal-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            padding: 20px;
+        }
+        
+        .image-modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease;
+            cursor: grab;
+        }
+        
+        .image-modal img:active {
+            cursor: grabbing;
+        }
+        
+        .image-modal img.zoomed {
+            cursor: grab;
+            max-width: none;
+            max-height: none;
+        }
+        
+        .image-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .image-modal-close:hover {
+            color: #667eea;
+        }
+        
+        .chart-image {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .chart-image:hover {
+            transform: scale(1.05);
+        }
+        
+        .symbols-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .symbols-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .symbols-grid::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+        
+        .symbols-grid::-webkit-scrollbar-thumb:hover {
+            background: #5a6fd8;
+        }
     </style>
 </head>
 <body>
     <div class="main-container">
         <div class="header-section">
-            <h1><i class="fas fa-chart-line"></i> Stock Screener</h1>
-            <p>AI-powered portfolio optimization using your custom watchlist and advanced technical analysis</p>
+            <h1><i class="fas fa-chart-line"></i> Portfolio Optimizer</h1>
+            <p>Quantitative portfolio optimization using your watchlist and advanced technical analysis</p>
         </div>
         
         <!-- Watchlist Management Panel -->
         <div class="control-panel">
-            <div class="section-title">
-                <i class="fas fa-list"></i> My Watchlist
+            <div class="collapsible-header" onclick="toggleWatchlist()">
+                <div class="section-title" style="margin-bottom: 0;">
+                    <i class="fas fa-list"></i> My Watchlist
+                </div>
+                <i class="fas fa-chevron-down collapse-icon collapsed" id="watchlistCollapseIcon"></i>
             </div>
             
-            <!-- Add Symbol Section -->
-            <div class="form-group">
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="newSymbol" placeholder="Add symbol (e.g., AAPL)" style="flex: 1;">
-                    <button type="button" class="btn" id="addSymbolBtn" style="width: auto; padding: 15px 20px;">
-                        <i class="fas fa-plus"></i> Add
+            <div class="collapsible-content collapsed" id="watchlistContent">
+                <!-- Add Symbol Section -->
+                <div class="form-group" style="margin-top: 20px;">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="newSymbol" placeholder="Add symbol (e.g., AAPL)" style="flex: 1;">
+                        <button type="button" class="btn" id="addSymbolBtn" style="width: auto; padding: 15px 20px;">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Current Watchlist -->
+                <div id="watchlistSymbols" class="symbols-grid"></div>
+                
+                <!-- Actions -->
+                <div class="watchlist-actions" style="margin-top: 20px;">
+                    <label for="csvFile" class="btn" style="width: auto; padding: 10px 20px; margin: 5px; background: #17a2b8; cursor: pointer; display: inline-block;">
+                        <i class="fas fa-upload"></i> Import CSV
+                    </label>
+                    <button type="button" class="btn" id="exportWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #28a745;">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                    <button type="button" class="btn" id="clearWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #dc3545;">
+                        <i class="fas fa-trash"></i> Clear All
                     </button>
                 </div>
+                
+                <!-- Hidden CSV Upload -->
+                <input type="file" id="csvFile" accept=".csv" style="display: none;" multiple="false">
             </div>
-            
-            <!-- Current Watchlist -->
-            <div id="watchlistSymbols" class="symbols-grid"></div>
-            
-            <!-- Actions -->
-            <div class="watchlist-actions" style="margin-top: 20px;">
-                <label for="csvFile" class="btn" style="width: auto; padding: 10px 20px; margin: 5px; background: #17a2b8; cursor: pointer; display: inline-block;">
-                    <i class="fas fa-upload"></i> Import CSV
-                </label>
-                <button type="button" class="btn" id="exportWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #28a745;">
-                    <i class="fas fa-download"></i> Export CSV
-                </button>
-                <button type="button" class="btn" id="clearWatchlistBtn" style="width: auto; padding: 10px 20px; margin: 5px; background: #dc3545;">
-                    <i class="fas fa-trash"></i> Clear All
-                </button>
-            </div>
-            
-            <!-- Hidden CSV Upload -->
-            <input type="file" id="csvFile" accept=".csv" style="display: none;" multiple="false">
         </div>
         
         <!-- Analysis Panel -->
@@ -473,6 +603,18 @@
             <div class="info-box">
                 <i class="fas fa-info-circle"></i>
                 <strong>How it works:</strong> Manage your watchlist above, then click "Optimize Portfolio" to get recommendations based on TradingView indicators and efficient frontier techniques.
+            </div>
+            
+            <!-- Portfolio Configuration -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                <div class="form-group">
+                    <label for="threshold">Weight Threshold:</label>
+                    <input type="number" id="threshold" min="0.01" max="0.5" step="0.01" value="0.05" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1.1em;">
+                </div>
+                <div class="form-group">
+                    <label for="budget">Budget ($):</label>
+                    <input type="number" id="budget" min="100" step="100" value="1000" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1.1em;">
+                </div>
             </div>
             
             <button type="button" class="btn" id="analyzeBtn">
@@ -509,6 +651,30 @@
                 </div>
                 
                 <div class="right-panel">
+                    <!-- Portfolio Weights Table -->
+                    <div class="section-card">
+                        <div class="section-title">
+                            <i class="fas fa-chart-pie"></i> Portfolio Weights
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <table id="weightsTable" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                                    <thead>
+                                        <tr style="background: #f8f9fa; border-bottom: 2px solid #667eea;">
+                                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #2c3e50;">Stock</th>
+                                            <th style="padding: 12px; text-align: right; font-weight: 600; color: #2c3e50;">Percentage</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="weightsTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div>
+                                <canvas id="weightsChart" width="300" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Portfolio Allocation -->
                     <div class="section-card">
                         <div class="section-title">
@@ -529,9 +695,150 @@
         </div>
     </div>
     
+    <!-- Image zoom modal -->
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-content">
+            <span class="image-modal-close" onclick="closeImageModal()">&times;</span>
+            <img id="modalImage" src="" alt="Zoomed image">
+        </div>
+    </div>
+    
     <script>
         // Watchlist Management
         let currentWatchlist = [];
+        let weightsChart = null;
+        
+        // Image zoom modal functions
+        let currentZoom = 1;
+        let isDragging = false;
+        let startX, startY, initialX, initialY;
+        
+        function openImageModal(imageSrc) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            modalImage.src = imageSrc;
+            modal.style.display = 'block';
+            document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            
+            // Reset zoom and position
+            currentZoom = 1;
+            modalImage.style.transform = 'scale(1) translate(0, 0)';
+            modalImage.classList.remove('zoomed');
+            
+            // Add zoom and drag functionality
+            setupImageZoom(modalImage);
+        }
+        
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Restore scrolling
+            
+            // Reset zoom and position
+            const modalImage = document.getElementById('modalImage');
+            currentZoom = 1;
+            modalImage.style.transform = 'scale(1) translate(0, 0)';
+            modalImage.classList.remove('zoomed');
+        }
+        
+        function setupImageZoom(image) {
+            let translateX = 0;
+            let translateY = 0;
+            
+            // Mouse wheel zoom
+            image.addEventListener('wheel', function(e) {
+                e.preventDefault();
+                
+                const rect = image.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                const mouseX = e.clientX - centerX;
+                const mouseY = e.clientY - centerY;
+                
+                const wheel = e.deltaY < 0 ? 1 : -1;
+                const zoom = Math.exp(wheel * 0.1);
+                
+                currentZoom *= zoom;
+                currentZoom = Math.max(0.5, Math.min(currentZoom, 5)); // Limit zoom between 0.5x and 5x
+                
+                if (currentZoom > 1) {
+                    image.classList.add('zoomed');
+                } else {
+                    image.classList.remove('zoomed');
+                    translateX = 0;
+                    translateY = 0;
+                }
+                
+                image.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+            });
+            
+            // Mouse drag to pan
+            image.addEventListener('mousedown', function(e) {
+                if (currentZoom > 1) {
+                    isDragging = true;
+                    startX = e.clientX - translateX;
+                    startY = e.clientY - translateY;
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (isDragging && currentZoom > 1) {
+                    translateX = e.clientX - startX;
+                    translateY = e.clientY - startY;
+                    image.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+                }
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+            
+            // Double click to zoom in/out
+            image.addEventListener('dblclick', function(e) {
+                if (currentZoom === 1) {
+                    currentZoom = 2;
+                    image.classList.add('zoomed');
+                } else {
+                    currentZoom = 1;
+                    translateX = 0;
+                    translateY = 0;
+                    image.classList.remove('zoomed');
+                }
+                image.style.transform = `scale(${currentZoom}) translate(${translateX}px, ${translateY}px)`;
+            });
+        }
+        
+        // Close modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
+            }
+        });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeImageModal();
+            }
+        });
+        
+        // Toggle watchlist collapse
+        function toggleWatchlist() {
+            const content = document.getElementById('watchlistContent');
+            const icon = document.getElementById('watchlistCollapseIcon');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                content.classList.add('collapsed');
+                icon.classList.add('collapsed');
+            } else {
+                content.classList.remove('collapsed');
+                content.classList.add('expanded');
+                icon.classList.remove('collapsed');
+            }
+        }
         
         // Load watchlist on page load
         document.addEventListener('DOMContentLoaded', function() {
@@ -604,12 +911,16 @@
                     analyzeBtn.disabled = true;
                     
                     try {
-                        console.log('Making request to /recommend_stocks/');
+                        const threshold = parseFloat(document.getElementById('threshold').value) || 0.1;
+                        const budget = parseInt(document.getElementById('budget').value) || 1000;
+                        
+                        console.log('Making request to /recommend_stocks/ with params:', { threshold, budget });
                         const response = await fetch('/recommend_stocks/', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
-                            }
+                            },
+                            body: JSON.stringify({ threshold: threshold, budget: budget })
                         });
                         
                         console.log('Response status:', response.status);
@@ -683,7 +994,7 @@
         }
         
         // Display watchlist
-        function displayWatchlist(symbols) {
+        async function displayWatchlist(symbols) {
             const container = document.getElementById('watchlistSymbols');
             container.innerHTML = '';
             
@@ -692,17 +1003,52 @@
                 return;
             }
             
+            // Create items with loading state first
             symbols.forEach(symbol => {
                 const symbolItem = document.createElement('div');
                 symbolItem.className = 'symbol-item';
                 symbolItem.innerHTML = `
-                    <span class="symbol-text">${symbol}</span>
+                    <div>
+                        <span class="symbol-text">${symbol}</span>
+                        <div class="company-name" style="font-size: 0.85em; color: #7f8c8d; margin-top: 2px;">Loading...</div>
+                    </div>
                     <button class="remove-symbol" onclick="removeSymbol('${symbol}')">
                         <i class="fas fa-times"></i>
                     </button>
                 `;
                 container.appendChild(symbolItem);
             });
+            
+            // Fetch company names
+            try {
+                const response = await fetch('/get_company_names', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ symbols })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Update each symbol with company name
+                    symbols.forEach((symbol, index) => {
+                        const symbolItem = container.children[index];
+                        const companyNameDiv = symbolItem.querySelector('.company-name');
+                        const companyName = data.company_names[symbol] || 'N/A';
+                        companyNameDiv.textContent = companyName;
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching company names:', error);
+                // Remove loading text on error
+                symbols.forEach((symbol, index) => {
+                    const symbolItem = container.children[index];
+                    const companyNameDiv = symbolItem.querySelector('.company-name');
+                    companyNameDiv.textContent = '';
+                });
+            }
         }
         
         // Remove symbol from watchlist
@@ -800,12 +1146,14 @@
             const stockCharts = document.getElementById('stockCharts');
             const stockChartsSection = document.getElementById('stockChartsSection');
             const performanceMetrics = document.getElementById('performanceMetrics');
+            const weightsTableBody = document.getElementById('weightsTableBody');
             
             // Clear existing content
             stockList.innerHTML = '';
             portfolioCharts.innerHTML = '';
             stockCharts.innerHTML = '';
             performanceMetrics.innerHTML = '';
+            weightsTableBody.innerHTML = '';
             
             console.log('Portfolio data:', data.portfolio);
             
@@ -821,7 +1169,7 @@
                     chartCard.className = 'chart-card';
                     chartCard.innerHTML = `
                         <h4>${chartTitles[key] || key}</h4>
-                        <img src="${imagePath}" alt="${chartTitles[key] || key}" class="chart-image">
+                        <img src="${imagePath}" alt="${chartTitles[key] || key}" class="chart-image" onclick="openImageModal('${imagePath}')" title="Click to zoom">
                     `;
                     portfolioCharts.appendChild(chartCard);
                 });
@@ -848,31 +1196,142 @@
                 `;
             }
             
+            // Display portfolio weights table and chart
+            if (data.portfolio && data.portfolio.weights) {
+                const weightsData = [];
+                const colors = [
+                    '#8B7ED8', '#E85D75', '#5DADE2', '#52C41A', '#FA8C16',
+                    '#F759AB', '#13C2C2', '#722ED1', '#FAAD14', '#A0D911'
+                ];
+                
+                // Create array for sorting
+                const weightsArray = [];
+                Object.entries(data.portfolio.weights).forEach(([symbol, weight], index) => {
+                    // Only show stocks with allocation > 0.01% (avoid tiny fractional allocations)
+                    if (weight > 0.0001) {
+                        weightsArray.push({
+                            symbol: symbol,
+                            weight: weight,
+                            percentage: (weight * 100).toFixed(2),
+                            color: colors[index % colors.length]
+                        });
+                    }
+                });
+                
+                // Sort by weight descending
+                weightsArray.sort((a, b) => b.weight - a.weight);
+                
+                // Add sorted data to weightsData and table
+                weightsArray.forEach(item => {
+                    weightsData.push(item);
+                    
+                    // Add row to weights table
+                    const row = document.createElement('tr');
+                    row.style.borderBottom = '1px solid #e0e0e0';
+                    row.innerHTML = `
+                        <td style="padding: 12px; font-weight: 600; color: #2c3e50;">${item.symbol}</td>
+                        <td style="padding: 12px; text-align: right; font-weight: 600; color: #28a745;">${item.percentage}%</td>
+                    `;
+                    weightsTableBody.appendChild(row);
+                });
+                
+                // Destroy previous chart if exists
+                if (weightsChart) {
+                    weightsChart.destroy();
+                }
+                
+                // Create donut chart
+                const ctx = document.getElementById('weightsChart').getContext('2d');
+                weightsChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: weightsData.map(item => item.symbol),
+                        datasets: [{
+                            data: weightsData.map(item => item.percentage),
+                            backgroundColor: weightsData.map(item => item.color),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.label + ': ' + context.parsed + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
             // Display portfolio allocation
             if (data.portfolio && data.portfolio.weights) {
+                // Create array of stocks with their data for sorting
+                const stocksData = [];
                 Object.entries(data.portfolio.weights).forEach(([symbol, weight]) => {
                     const shares = data.portfolio.allocation[symbol] || 0;
                     
-                    // Only show stocks with allocation > 0.01% (avoid tiny fractional allocations)
+                    // Only show stocks with weight > 0.01% (avoid tiny fractional allocations)
                     if (weight > 0.0001) {
                         const stockInfo = data.stock_info && data.stock_info[symbol];
                         const industry = stockInfo ? stockInfo.industry : 'N/A';
                         const sector = stockInfo ? stockInfo.sector : 'N/A';
                         const shortName = stockInfo ? stockInfo.shortName : symbol;
                         
-                        const stockItem = document.createElement('div');
-                        stockItem.className = 'stock-item';
-                        stockItem.innerHTML = `
-                            <div>
-                                <span class="stock-symbol">${symbol}</span>
-                                <span class="stock-weight">${(weight * 100).toFixed(3)}%</span>
-                                <div class="stock-shares">${shares} shares</div>
-                                <div class="stock-industry">${industry}</div>
-                                <div class="stock-sector">${sector}</div>
-                            </div>
-                        `;
-                        stockList.appendChild(stockItem);
+                        // Calculate dollar amount based on weight and budget
+                        const budget = parseInt(document.getElementById('budget').value) || 1000;
+                        const dollarAmount = weight * budget;
+                        
+                        stocksData.push({
+                            symbol,
+                            weight,
+                            shares,
+                            industry,
+                            sector,
+                            shortName,
+                            dollarAmount
+                        });
                     }
+                });
+                
+                // Sort by weight descending
+                stocksData.sort((a, b) => {
+                    const weightA = parseFloat(a.weight);
+                    const weightB = parseFloat(b.weight);
+                    return weightB - weightA;
+                });
+                
+                // Display sorted stocks
+                console.log('Stocks data for Portfolio Allocation:', stocksData);
+                stocksData.forEach(stock => {
+                    const stockItem = document.createElement('div');
+                    stockItem.className = 'stock-item';
+                    stockItem.innerHTML = `
+                        <div>
+                            <span class="stock-symbol">${stock.symbol}</span>
+                            <span class="stock-weight">${(stock.weight * 100).toFixed(2)}%</span>
+                            <div class="stock-shares">${stock.shares % 1 === 0 ? stock.shares : stock.shares.toFixed(2)} shares</div>
+                            <div class="stock-dollar-amount" style="color: #28a745; font-weight: 600; font-size: 0.9em; margin-top: 3px;">$${stock.dollarAmount.toFixed(2)}</div>
+                            <div class="stock-industry">${stock.industry || 'N/A'}</div>
+                            <div class="stock-sector">${stock.sector || 'N/A'}</div>
+                        </div>
+                    `;
+                    stockList.appendChild(stockItem);
                 });
             }
             
@@ -884,7 +1343,7 @@
                     chartCard.className = 'chart-card';
                     chartCard.innerHTML = `
                         <h4>${stockChart.symbol}</h4>
-                        <img src="${stockChart.chart}" alt="${stockChart.symbol} Chart" class="chart-image">
+                        <img src="${stockChart.chart}" alt="${stockChart.symbol} Chart" class="chart-image" onclick="openImageModal('${stockChart.chart}')" title="Click to zoom">
                     `;
                     stockCharts.appendChild(chartCard);
                 });

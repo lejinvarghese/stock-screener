@@ -15,6 +15,8 @@ The selection process involves two key steps:
     2. [Sample: TSLA](https://www.tradingview.com/symbols/NASDAQ-TSLA/technicals/)
 2. Portfolio Optimization (based on Efficient Frontier techniques) for an investment value.
 
+![image](https://pyportfolioopt.readthedocs.io/en/latest/_images/efficient_frontier.png)
+
 ## Sample
 
 Ticker Trends:
