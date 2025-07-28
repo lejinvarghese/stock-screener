@@ -194,6 +194,41 @@ def signals_ma(data):
     """
     Heikin-Ashi advanced ohlc indicators
     """
+    
+    # Check if we have enough data for analysis
+    if len(data) < max(W_MA_STRONG_LONG, W_MA_STRONG_SHORT, W_MA_EARLY_LONG, W_MA_EARLY_SHORT):
+        console.print(f"[yellow]WARNING: Insufficient data ({len(data)} rows) for {data.ticker.iloc[0] if 'ticker' in data.columns else 'unknown'}, skipping technical analysis[/yellow]")
+        # Return minimal data structure with all required columns
+        signals = pd.DataFrame(index=data.index)
+        
+        # Signal columns
+        signals["signal_strong_rising"] = 0.0
+        signals["signal_early_rising"] = 0.0
+        signals["signal_early_warning"] = 0.0
+        signals["signal_strong_warning"] = 0.0
+        signals["positions_early_rising"] = 0.0
+        signals["positions_early_warning"] = 0.0
+        signals["positions_warning"] = 0.0
+        signals["positions_strong"] = 0.0
+        
+        # Moving average columns (use Close price as fallback)
+        signals["ma_early_short"] = data["Close"]
+        signals["ma_strong_short"] = data["Close"]
+        signals["ma_strong_long"] = data["Close"]
+        signals["ma_early_long_high"] = data["High"] if "High" in data.columns else data["Close"]
+        signals["ma_early_long_low"] = data["Low"] if "Low" in data.columns else data["Close"]
+        
+        # Volume
+        signals["volume"] = data["Volume"] if "Volume" in data.columns else 0.0
+        signals = signals.merge(data[["Close", "Volume"]], left_index=True, right_index=True, how='left')
+        
+        # Create simple OHLC data
+        data.index = pd.to_datetime(data.index)
+        data_values = data[["Open", "High", "Low", "Close"]].values.tolist()
+        plot_dates = mdates.date2num(data.index)
+        ohlc = [[plot_dates[i]] + data_values[i] for i in range(len(plot_dates))]
+        
+        return ohlc, signals
 
     # regular indicators are replaced with the advanced heikin-ashi indicators
     ha_close = 0.25 * (2 * data.Close + data.Open + data.Low)
@@ -237,33 +272,33 @@ def signals_ma(data):
     )
 
     # Create signals
-    signals["signal_early_rising"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:]
-        > signals["ma_early_long_high"][W_MA_EARLY_SHORT:],
+    signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("signal_early_rising")] = np.where(
+        signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_early_short")]
+        > signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_early_long_high")],
         1.0,
         0.0,
     )
     signals["positions_early_rising"] = signals["signal_early_rising"].diff()
 
-    signals["signal_early_warning"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:]
-        < signals["ma_early_long_low"][W_MA_EARLY_SHORT:],
+    signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("signal_early_warning")] = np.where(
+        signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_early_short")]
+        < signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_early_long_low")],
         1.0,
         0.0,
     )
     signals["positions_early_warning"] = signals["signal_early_warning"].diff()
 
-    signals["signal_strong_warning"][W_MA_EARLY_SHORT:] = np.where(
-        signals["ma_early_short"][W_MA_EARLY_SHORT:]
-        < signals["ma_strong_short"][W_MA_EARLY_SHORT:],
+    signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("signal_strong_warning")] = np.where(
+        signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_early_short")]
+        < signals.iloc[W_MA_EARLY_SHORT:, signals.columns.get_loc("ma_strong_short")],
         1.0,
         0.0,
     )
     signals["positions_warning"] = signals["signal_strong_warning"].diff()
 
-    signals["signal_strong_rising"][W_MA_STRONG_SHORT:] = np.where(
-        signals["ma_strong_short"][W_MA_STRONG_SHORT:]
-        > signals["ma_strong_long"][W_MA_STRONG_SHORT:],
+    signals.iloc[W_MA_STRONG_SHORT:, signals.columns.get_loc("signal_strong_rising")] = np.where(
+        signals.iloc[W_MA_STRONG_SHORT:, signals.columns.get_loc("ma_strong_short")]
+        > signals.iloc[W_MA_STRONG_SHORT:, signals.columns.get_loc("ma_strong_long")],
         1.0,
         0.0,
     )

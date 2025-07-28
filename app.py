@@ -84,9 +84,10 @@ def recommend_stocks():
         data = request.get_json() or {}
         threshold = data.get("threshold", 0.05)
         budget = data.get("budget", 1000)
+        method = data.get("method", "max_sharpe")  # Default to max_sharpe
 
         console.print(
-            f"[blue]Portfolio parameters: {threshold} threshold, ${budget} budget[/blue]"
+            f"[blue]Portfolio parameters: {threshold} threshold, ${budget} budget, {method} method[/blue]"
         )
 
         # Use custom watchlist instead of Wealthsimple
@@ -99,7 +100,7 @@ def recommend_stocks():
             )
         )
         optimized_stocks = optimize(
-            pre_selected_stocks, budget=budget, cutoff=threshold, send_telegram=False
+            pre_selected_stocks, budget=budget, cutoff=threshold, send_telegram=False, method=method
         )
         console.print(
             Panel(

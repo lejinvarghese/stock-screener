@@ -606,7 +606,7 @@
             </div>
             
             <!-- Portfolio Configuration -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label for="threshold">Weight Threshold:</label>
                     <input type="number" id="threshold" min="0.01" max="0.5" step="0.01" value="0.05" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1.1em;">
@@ -614,6 +614,13 @@
                 <div class="form-group">
                     <label for="budget">Budget ($):</label>
                     <input type="number" id="budget" min="100" step="100" value="1000" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1.1em;">
+                </div>
+                <div class="form-group">
+                    <label for="method">Optimization Method: <i class="fas fa-info-circle" style="color: #667eea; cursor: help;" title="Max Sharpe: Maximizes risk-adjusted returns&#10;Semivariance: Focuses on downside risk reduction"></i></label>
+                    <select id="method" style="width: 100%; padding: 10px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1.1em; background: white;">
+                        <option value="max_sharpe">Max Sharpe Ratio</option>
+                        <option value="semivariance">Semivariance (Downside Risk)</option>
+                    </select>
                 </div>
             </div>
             
@@ -913,14 +920,15 @@
                     try {
                         const threshold = parseFloat(document.getElementById('threshold').value) || 0.1;
                         const budget = parseInt(document.getElementById('budget').value) || 1000;
+                        const method = document.getElementById('method').value || 'max_sharpe';
                         
-                        console.log('Making request to /recommend_stocks/ with params:', { threshold, budget });
+                        console.log('Making request to /recommend_stocks/ with params:', { threshold, budget, method });
                         const response = await fetch('/recommend_stocks/', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ threshold: threshold, budget: budget })
+                            body: JSON.stringify({ threshold: threshold, budget: budget, method: method })
                         });
                         
                         console.log('Response status:', response.status);

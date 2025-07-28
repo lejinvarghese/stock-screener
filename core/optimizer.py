@@ -60,33 +60,105 @@ def optimize(
     cutoff=0.01,
     fractional_threshold=0.05,
     send_telegram=True,
+    method="max_sharpe",
 ):
     """
-    Optimize portfolio
+    Optimize portfolio using specified method
+    Available methods:
+    - max_sharpe: Maximum Sharpe ratio using EfficientFrontier
+    - semivariance: EfficientSemivariance for downside risk optimization
     """
+    console.print(f"[blue]Using optimization method: {method}[/blue]")
+    
     mu = expected_returns.ema_historical_return(prices)
-
     gamma = 0.3  # shrinkage intensity
     mu = (1 - gamma) * mu + gamma * mu.mean()
 
-    # covariance_matrix = risk_models.exp_cov(prices, log_returns=True)
+    console.print("[blue]Generating portfolio optimization charts...[/blue]")
+    
+    # Always calculate covariance matrix for plotting
     covariance_matrix = risk_models.CovarianceShrinkage(
         prices, log_returns=True
     ).ledoit_wolf()
-
-    console.print("[blue]Generating portfolio optimization charts...[/blue]")
-    ef_optimizer = EfficientFrontier(mu, covariance_matrix)
-
-    # historical_returns = expected_returns.returns_from_prices(df)
-    # ef_optimizer = EfficientSemivariance(mu, historical_returns)
-    # ef_optimizer.efficient_return(0.20)
+    
+    if method == "semivariance":
+        # Use EfficientSemivariance for downside risk optimization
+        historical_returns = expected_returns.returns_from_prices(prices)
+        ef_optimizer = EfficientSemivariance(mu, historical_returns)
+        console.print("[blue]Using EfficientSemivariance for downside risk optimization[/blue]")
+    else:
+        # Default to EfficientFrontier with max Sharpe
+        ef_optimizer = EfficientFrontier(mu, covariance_matrix)
+        console.print("[blue]Using EfficientFrontier for maximum Sharpe ratio[/blue]")
 
     initial_weights = np.array([1 / n_tickers] * n_tickers)
-    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
-    ef_optimizer.add_objective(
-        objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
-    )
-    ef_optimizer.max_sharpe()
+    
+    # Add objectives based on optimization method
+    if method == "semivariance":
+        # EfficientSemivariance supports fewer objectives
+        ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.01)
+    else:
+        # EfficientFrontier supports more objectives
+        ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.01)
+        ef_optimizer.add_objective(
+            objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
+        )
+    
+    # Try optimization with fallback solvers
+    solvers_to_try = ['OSQP', 'ECOS', 'SCS']
+    optimization_successful = False
+    
+    for solver in solvers_to_try:
+        try:
+            console.print(f"[dim]Attempting optimization with {solver} solver...[/dim]")
+            ef_optimizer._solver = solver
+            
+            # Run optimization based on method
+            if method == "semivariance":
+                # For semivariance, target a reasonable return (20%)
+                ef_optimizer.efficient_return(0.20)
+            else:
+                # Default max Sharpe optimization
+                ef_optimizer.max_sharpe()
+                
+            console.print(f"[green]Optimization successful with {solver} solver[/green]")
+            optimization_successful = True
+            break
+        except Exception as e:
+            console.print(f"[yellow]Warning: {solver} solver failed: {str(e)}[/yellow]")
+            # Reset the optimizer for next attempt
+            if method == "semivariance":
+                historical_returns = expected_returns.returns_from_prices(prices)
+                ef_optimizer = EfficientSemivariance(mu, historical_returns)
+                ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+            else:
+                ef_optimizer = EfficientFrontier(mu, covariance_matrix)
+                ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+                ef_optimizer.add_objective(
+                    objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
+                )
+            continue
+    
+    if not optimization_successful:
+        console.print("[red]ERROR: All solvers failed. Trying simplified optimization...[/red]")
+        # Try with no additional objectives as fallback
+        if method == "semivariance":
+            historical_returns = expected_returns.returns_from_prices(prices)
+            ef_optimizer = EfficientSemivariance(mu, historical_returns)
+            try:
+                ef_optimizer.efficient_return(0.15)  # Lower target for fallback
+                console.print("[green]Simplified semivariance optimization successful[/green]")
+            except Exception as e:
+                console.print(f"[red]ERROR: Even simplified semivariance optimization failed: {str(e)}[/red]")
+                raise RuntimeError(f"Semivariance portfolio optimization failed with all solvers: {str(e)}")
+        else:
+            ef_optimizer = EfficientFrontier(mu, covariance_matrix)
+            try:
+                ef_optimizer.max_sharpe()
+                console.print("[green]Simplified max Sharpe optimization successful[/green]")
+            except Exception as e:
+                console.print(f"[red]ERROR: Even simplified max Sharpe optimization failed: {str(e)}[/red]")
+                raise RuntimeError(f"Max Sharpe portfolio optimization failed with all solvers: {str(e)}")
     try:
         plotting.plot_efficient_frontier(
             ef_optimizer,
@@ -102,10 +174,37 @@ def optimize(
     filtered_weights = {
         stock: weight for stock, weight in cleaned_weights.items() if weight > 0
     }
+    
+    # Check if all weights were filtered out
+    if not filtered_weights:
+        console.print(f"[yellow]WARNING: All weights below cutoff ({cutoff}). Using lower cutoff for {method} method...[/yellow]")
+        # For semivariance, try with a much lower cutoff or no cutoff
+        if method == "semivariance":
+            cleaned_weights = ef_optimizer.clean_weights(cutoff=0.001)  # Very low cutoff
+            filtered_weights = {
+                stock: weight for stock, weight in cleaned_weights.items() if weight > 0
+            }
+            console.print(f"[blue]Found {len(filtered_weights)} stocks with cutoff 0.001[/blue]")
+            
+        # If still empty, use top weights without cutoff
+        if not filtered_weights:
+            console.print("[yellow]Still no weights found. Using top 5 weights without cutoff...[/yellow]")
+            raw_weights = ef_optimizer.clean_weights(cutoff=0.0)
+            # Get top 5 stocks by weight
+            sorted_raw = sorted(raw_weights.items(), key=lambda x: x[1], reverse=True)[:5]
+            filtered_weights = dict(sorted_raw)
+            console.print(f"[blue]Selected top {len(filtered_weights)} stocks: {list(filtered_weights.keys())}[/blue]")
+    
+    # Normalize weights to sum to 1
     total_weight = sum(filtered_weights.values())
-    filtered_weights = {
-        stock: weight / total_weight for stock, weight in filtered_weights.items()
-    }
+    if total_weight > 0:
+        filtered_weights = {
+            stock: weight / total_weight for stock, weight in filtered_weights.items()
+        }
+    else:
+        console.print("[red]ERROR: No valid weights found even after fallback. Cannot proceed with optimization.[/red]")
+        raise ValueError("Portfolio optimization failed - no valid weights found")
+    
     sorted_weights = sorted(filtered_weights.items(), key=lambda x: x[1], reverse=True)
     weights_table = Table(
         title="Optimized Portfolio Weights", show_header=True, header_style="bold green"
@@ -205,7 +304,7 @@ def optimize(
 
 
 def run(
-    tickers, budget=1000, cutoff=0.01, fractional_threshold=0.05, send_telegram=True
+    tickers, budget=1000, cutoff=0.01, fractional_threshold=0.05, send_telegram=True, method="max_sharpe"
 ):
     """
     Runs the Optimization pipeline
@@ -221,6 +320,23 @@ def run(
     data = list(filter(None.__ne__, data))
     console.print(f"[blue]Received data for {len(data)} stocks[/blue]")
 
+    # Filter out stocks with insufficient data (need at least 252 trading days for reliable optimization)
+    MIN_HISTORY_DAYS = 252
+    filtered_data = []
+    for stock_data in data:
+        if stock_data is not None and len(stock_data) >= MIN_HISTORY_DAYS:
+            filtered_data.append(stock_data)
+        else:
+            ticker = stock_data.ticker.iloc[0] if stock_data is not None and 'ticker' in stock_data.columns else 'Unknown'
+            console.print(f"[yellow]Filtering out {ticker}: insufficient data ({len(stock_data) if stock_data is not None else 0} days, need {MIN_HISTORY_DAYS})[/yellow]")
+    
+    if len(filtered_data) < 2:
+        console.print(f"[red]ERROR: Need at least 2 stocks with sufficient data for optimization. Only have {len(filtered_data)}[/red]")
+        raise ValueError(f"Insufficient stocks for optimization. Need at least 2 stocks with {MIN_HISTORY_DAYS}+ days of data")
+    
+    console.print(f"[green]Using {len(filtered_data)} stocks with sufficient data for optimization[/green]")
+    data = filtered_data
+
     prices = get_price_ticker_matrix(data)
 
     optimization_result = optimize(
@@ -230,6 +346,7 @@ def run(
         cutoff=cutoff,
         fractional_threshold=fractional_threshold,
         send_telegram=send_telegram,
+        method=method,
     )
     return optimization_result
 
@@ -244,7 +361,13 @@ def run(
     "--budget", default=1000, help="Portfolio value in dollars (default: 1000)"
 )
 @click.option("--send-telegram", is_flag=True, help="Send messages to Telegram")
-def main(threshold, budget, send_telegram):
+@click.option(
+    "--method",
+    default="max_sharpe",
+    type=click.Choice(['max_sharpe', 'semivariance']),
+    help="Optimization method: max_sharpe or semivariance (default: max_sharpe)"
+)
+def main(threshold, budget, send_telegram, method):
     """Portfolio optimization with sample stocks"""
     sample_tickers = [
         "AAPL",
@@ -265,10 +388,10 @@ def main(threshold, budget, send_telegram):
     ]
 
     console.print(
-        f"[blue]Using threshold {threshold} for portfolio optimization[/blue]"
+        f"[blue]Using threshold {threshold} and method {method} for portfolio optimization[/blue]"
     )
     result = run(
-        sample_tickers, budget=budget, cutoff=threshold, send_telegram=send_telegram
+        sample_tickers, budget=budget, cutoff=threshold, send_telegram=send_telegram, method=method
     )
     console.print(
         Panel(
