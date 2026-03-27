@@ -17,6 +17,7 @@ from core.optimizer import run as optimize
 from core.watchlist import WatchlistManager, get_custom_watchlist
 from core.sell_analyzer import SellAnalyzer
 from core.portfolio_manager import PortfolioManager
+from core.backtest import PortfolioBacktester
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -407,6 +408,107 @@ def check_portfolio_risk():
 
     except Exception as e:
         console.print(f"[red]Error in check_portfolio: {e}[/red]")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/backtest/", methods=["POST"])
+def run_backtest():
+    """
+    Backtest a portfolio allocation
+
+    POST /backtest/
+    {
+        "tickers": ["AAPL", "MSFT", "GOOGL"],
+        "weights": {"AAPL": 0.4, "MSFT": 0.35, "GOOGL": 0.25},
+        "start_date": "2020-01-01",
+        "end_date": "2024-01-01",
+        "initial_capital": 10000,
+        "rebalance_freq": "monthly"
+    }
+
+    Returns:
+        {
+            "total_return": 0.453,
+            "cagr": 0.118,
+            "sharpe": 1.23,
+            "max_drawdown": -0.18,
+            "equity_curve": {...}
+        }
+    """
+    try:
+        data = request.get_json()
+
+        tickers = data.get("tickers", [])
+        weights = data.get("weights", {})
+
+        if not tickers or not weights:
+            return jsonify({"error": "tickers and weights required"}), 400
+
+        backtester = PortfolioBacktester()
+        results = backtester.backtest_allocation(
+            tickers,
+            weights,
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            initial_capital=data.get("initial_capital", 10000),
+            rebalance_freq=data.get("rebalance_freq", "monthly"),
+        )
+
+        if "error" in results:
+            return jsonify(results), 400
+
+        console.print(f"[green]Backtest complete: {results['total_return']:.2%} return[/green]")
+
+        return jsonify(results)
+
+    except Exception as e:
+        console.print(f"[red]Error in backtest: {e}[/red]")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/compare_methods/", methods=["POST"])
+def compare_optimization_methods():
+    """
+    Compare multiple optimization methods
+
+    POST /compare_methods/
+    {
+        "tickers": ["AAPL", "MSFT", "GOOGL", "TSLA"],
+        "methods": ["max_sharpe", "min_vol", "hrp"],
+        "start_date": "2020-01-01",
+        "end_date": "2024-01-01"
+    }
+
+    Returns:
+        {
+            "max_sharpe": {...},
+            "min_vol": {...},
+            "hrp": {...}
+        }
+    """
+    try:
+        data = request.get_json()
+
+        tickers = data.get("tickers", [])
+        methods = data.get("methods", ["max_sharpe", "min_vol", "hrp"])
+
+        if not tickers:
+            return jsonify({"error": "tickers required"}), 400
+
+        backtester = PortfolioBacktester()
+        results = backtester.compare_methods(
+            tickers,
+            methods=methods,
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+        )
+
+        console.print(f"[green]Method comparison complete for {len(results)} methods[/green]")
+
+        return jsonify(results)
+
+    except Exception as e:
+        console.print(f"[red]Error in compare_methods: {e}[/red]")
         return jsonify({"error": str(e)}), 500
 
 
