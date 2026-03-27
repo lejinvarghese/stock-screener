@@ -17,16 +17,21 @@ class SellAnalyzer:
     Technical sell signal detection
 
     Signals:
-    - Stop-loss: Fixed percentage below entry
-    - Trailing stop: ATR-based dynamic stop
+    - Stop-loss: 12% fixed loss below entry
+    - Trailing stop: 3x ATR dynamic stop (less aggressive)
     - Technical breakdown: MA death cross + RSI breakdown + MACD bearish
+
+    Priority:
+    - HIGH: Stop-loss or losing positions with trailing stop
+    - TRIM: Winners >25% gain with trailing stop (take profits)
+    - MEDIUM: Fundamental deterioration or trim candidates
     """
 
-    def __init__(self, stop_loss_pct: float = 0.08, trailing_atr_mult: float = 2.0):
+    def __init__(self, stop_loss_pct: float = 0.12, trailing_atr_mult: float = 3.0):
         """
         Args:
-            stop_loss_pct: Fixed stop-loss percentage (0.08 = 8%)
-            trailing_atr_mult: ATR multiplier for trailing stop (2.0 = 2x ATR)
+            stop_loss_pct: Fixed stop-loss percentage (0.12 = 12%)
+            trailing_atr_mult: ATR multiplier for trailing stop (3.0 = 3x ATR)
         """
         self.stop_loss_pct = stop_loss_pct
         self.trailing_atr_mult = trailing_atr_mult
@@ -364,8 +369,16 @@ class SellAnalyzer:
             tech_result["fundamental_metrics"] = fund_result.get("metrics", {})
 
             # Overall recommendation
+            gain_loss = tech_result.get("gain_loss", 0)
+            reasons = tech_result.get("reasons", [])
+
             if tech_result.get("recommendation") == "SELL":
-                tech_result["priority"] = "HIGH"
+                # Don't flag big winners (>25% gain) as HIGH unless stop_loss hit
+                if gain_loss > 0.25 and "stop_loss" not in reasons:
+                    tech_result["priority"] = "MEDIUM"
+                    tech_result["recommendation"] = "TRIM"
+                else:
+                    tech_result["priority"] = "HIGH"
             elif fund_result.get("recommend_review", False):
                 tech_result["priority"] = "MEDIUM"
                 if tech_result.get("recommendation") == "HOLD":
@@ -375,8 +388,18 @@ class SellAnalyzer:
 
             results.append(tech_result)
 
-        # Sort by priority
-        priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-        results.sort(key=lambda x: priority_order.get(x.get("priority", "LOW"), 2))
+        # Sort by priority, then by gain/loss (worst losses first for HIGH priority)
+        def sort_key(x):
+            priority_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            priority = priority_order.get(x.get("priority", "LOW"), 2)
+            gain_loss = x.get("gain_loss", 0)
+
+            # For HIGH priority, sort by gain_loss ascending (worst losses first)
+            if priority == 0:
+                return (priority, gain_loss)
+            else:
+                return (priority, -gain_loss)  # For others, winners first
+
+        results.sort(key=sort_key)
 
         return results

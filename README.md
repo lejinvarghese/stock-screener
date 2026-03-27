@@ -111,15 +111,17 @@ curl -X POST http://localhost:8000/check_sells/ \
 ```
 
 **Signals detected:**
-- **Stop-loss**: Price drops >8% below entry
-- **Trailing stop**: ATR-based (20-day high - 2×ATR)
+- **Stop-loss**: Price drops >12% below entry
+- **Trailing stop**: ATR-based (20-day high - 3×ATR)
 - **Technical breakdown**: Death cross + RSI<30 + MACD bearish
 - **Fundamental issues**: Earnings decline, low ROE, high debt, overvalued
 
 **Priority levels:**
-- **HIGH**: Stop-loss/trailing stop triggered → SELL NOW
-- **MEDIUM**: Fundamental deterioration → REVIEW
+- **HIGH**: Stop-loss hit or losing positions → SELL NOW
+- **MEDIUM**: Winners >25% (trim profits) or fundamental issues → REVIEW/TRIM
 - **LOW**: No issues → HOLD
+
+Results sorted by severity (worst losses first for HIGH priority).
 
 **Or analyze specific holdings:**
 
