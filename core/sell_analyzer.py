@@ -285,6 +285,49 @@ class SellAnalyzer:
                 "error": str(e),
             }
 
+    def load_holdings_from_csv(self, csv_path: str = "data/inputs/my_stocks.csv") -> List[Dict]:
+        """
+        Load holdings from CSV file
+
+        Args:
+            csv_path: Path to CSV file with columns: Symbol, Purchase Price, Quantity, Trade Date
+
+        Returns:
+            List of holdings dicts: [{'symbol': 'AAPL', 'entry_price': 150.0, 'shares': 10}, ...]
+        """
+        import pandas as pd
+
+        df = pd.read_csv(csv_path)
+        holdings = []
+
+        for symbol in df['Symbol'].unique():
+            symbol_data = df[df['Symbol'] == symbol]
+
+            # Calculate weighted average entry price
+            total_qty = symbol_data['Quantity'].sum()
+
+            # Skip if no quantity or invalid data
+            if pd.isna(total_qty) or total_qty == 0:
+                console.print(f"[yellow]⚠ Skipping {symbol}: no quantity data[/yellow]")
+                continue
+
+            weighted_price = (symbol_data['Purchase Price'] * symbol_data['Quantity']).sum() / total_qty
+
+            # Skip if price is NaN
+            if pd.isna(weighted_price):
+                console.print(f"[yellow]⚠ Skipping {symbol}: no price data[/yellow]")
+                continue
+
+            holdings.append({
+                'symbol': symbol,
+                'entry_price': float(weighted_price),
+                'shares': float(total_qty),
+                'entry_date': str(symbol_data['Trade Date'].min())
+            })
+
+        console.print(f"[blue]Loaded {len(holdings)} positions from {csv_path}[/blue]")
+        return holdings
+
     def batch_analyze(self, holdings: List[Dict]) -> List[Dict]:
         """
         Analyze multiple positions

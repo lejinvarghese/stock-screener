@@ -327,6 +327,8 @@ def check_sell_signals():
     Check sell signals for portfolio holdings
 
     POST /check_sells/
+    - Empty body or no holdings: reads from data/inputs/my_stocks.csv
+    - With holdings: uses provided data
     {
         "holdings": [
             {"symbol": "AAPL", "entry_price": 150, "entry_date": "2024-01-01", "shares": 10},
@@ -351,13 +353,16 @@ def check_sell_signals():
         }
     """
     try:
-        data = request.get_json()
+        analyzer = SellAnalyzer()
+
+        # Try to get holdings from request, otherwise load from CSV
+        data = request.get_json() or {}
         holdings = data.get("holdings", [])
 
         if not holdings:
-            return jsonify({"error": "No holdings provided"}), 400
+            console.print("[blue]No holdings provided, loading from CSV...[/blue]")
+            holdings = analyzer.load_holdings_from_csv()
 
-        analyzer = SellAnalyzer()
         results = analyzer.batch_analyze(holdings)
 
         console.print(f"[green]Analyzed {len(results)} positions[/green]")

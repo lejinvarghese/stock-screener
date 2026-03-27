@@ -102,21 +102,26 @@ Access the web interface at: **http://localhost:8000** (or your chosen port)
 
 ### 1. Sell Signal Analysis
 
-#### Analyze Your Portfolio from CSV
-Check all your holdings from `data/inputs/my_stocks.csv`:
+**Analyze your entire portfolio from CSV** (`data/inputs/my_stocks.csv`):
 
 ```sh
-# Make sure the app is running first (python app.py --port 8000)
-python analyze_my_stocks.py
+curl -X POST http://localhost:8000/check_sells/ \
+  -H "Content-Type: application/json" \
+  -d '{}'
 ```
 
-This will analyze all positions in your CSV and show:
-- **HIGH PRIORITY**: Stop-loss hits, trailing stops triggered, technical breakdowns
-- **MEDIUM PRIORITY**: Fundamental deterioration (earnings decline, high debt, overvaluation)
-- **HOLD**: Positions with no issues detected
+**Signals detected:**
+- **Stop-loss**: Price drops >8% below entry
+- **Trailing stop**: ATR-based (20-day high - 2×ATR)
+- **Technical breakdown**: Death cross + RSI<30 + MACD bearish
+- **Fundamental issues**: Earnings decline, low ROE, high debt, overvalued
 
-#### Analyze Specific Holdings via API
-Check individual holdings for stop-loss, trailing stops, and technical breakdowns:
+**Priority levels:**
+- **HIGH**: Stop-loss/trailing stop triggered → SELL NOW
+- **MEDIUM**: Fundamental deterioration → REVIEW
+- **LOW**: No issues → HOLD
+
+**Or analyze specific holdings:**
 
 ```sh
 curl -X POST http://localhost:8000/check_sells/ \
