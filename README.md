@@ -105,6 +105,10 @@ Access the web interface at: **http://localhost:8000** (or your chosen port)
 **Analyze your entire portfolio from CSV** (`data/inputs/my_stocks.csv`):
 
 ```sh
+# Pretty formatted output
+python core/check_sells.py
+
+# Or raw JSON via API
 curl -X POST http://localhost:8000/check_sells/ \
   -H "Content-Type: application/json" \
   -d '{}'
