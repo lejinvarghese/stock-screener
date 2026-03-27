@@ -15,6 +15,8 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from core.analyzer import run as analyze
 from core.optimizer import run as optimize
 from core.watchlist import WatchlistManager, get_custom_watchlist
+from core.sell_analyzer import SellAnalyzer
+from core.portfolio_manager import PortfolioManager
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -315,6 +317,96 @@ def get_company_names():
 
         return jsonify({"company_names": company_names})
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/check_sells/", methods=["POST"])
+def check_sell_signals():
+    """
+    Check sell signals for portfolio holdings
+
+    POST /check_sells/
+    {
+        "holdings": [
+            {"symbol": "AAPL", "entry_price": 150, "entry_date": "2024-01-01", "shares": 10},
+            {"symbol": "MSFT", "entry_price": 300, "shares": 5}
+        ]
+    }
+
+    Returns:
+        {
+            "sell_recommendations": [
+                {
+                    "symbol": "AAPL",
+                    "sell_signal": true,
+                    "reasons": ["stop_loss"],
+                    "current_price": 138.50,
+                    "gain_loss": -0.077,
+                    "recommendation": "SELL",
+                    "priority": "HIGH"
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        data = request.get_json()
+        holdings = data.get("holdings", [])
+
+        if not holdings:
+            return jsonify({"error": "No holdings provided"}), 400
+
+        analyzer = SellAnalyzer()
+        results = analyzer.batch_analyze(holdings)
+
+        console.print(f"[green]Analyzed {len(results)} positions[/green]")
+        sell_count = sum(1 for r in results if r.get("recommendation") == "SELL")
+        if sell_count > 0:
+            console.print(f"[red]Found {sell_count} SELL recommendations[/red]")
+
+        return jsonify({"sell_recommendations": results})
+
+    except Exception as e:
+        console.print(f"[red]Error in check_sells: {e}[/red]")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/check_portfolio/", methods=["POST"])
+def check_portfolio_risk():
+    """
+    Check portfolio-level risk metrics
+
+    POST /check_portfolio/
+    {
+        "current_portfolio": {"AAPL": 0.35, "MSFT": 0.25, "GOOGL": 0.20, "TSLA": 0.20},
+        "target_portfolio": {"AAPL": 0.30, "MSFT": 0.25, "GOOGL": 0.25, "TSLA": 0.20}
+    }
+
+    Returns:
+        {
+            "position_violations": [...],
+            "concentration": {...},
+            "rebalancing": {...},
+            "overall_recommendation": "REBALANCE" | "TRIM" | "OK"
+        }
+    """
+    try:
+        data = request.get_json()
+        current = data.get("current_portfolio", {})
+        target = data.get("target_portfolio")
+
+        if not current:
+            return jsonify({"error": "current_portfolio required"}), 400
+
+        manager = PortfolioManager()
+        results = manager.comprehensive_check(current, target)
+
+        console.print(f"[blue]Portfolio check: {results['overall_recommendation']}[/blue]")
+
+        return jsonify(results)
+
+    except Exception as e:
+        console.print(f"[red]Error in check_portfolio: {e}[/red]")
         return jsonify({"error": str(e)}), 500
 
 
