@@ -22,7 +22,18 @@ for symbol in df['Symbol'].unique():
 
     # Calculate weighted average entry price
     total_qty = symbol_data['Quantity'].sum()
+
+    # Skip if no quantity or invalid data
+    if pd.isna(total_qty) or total_qty == 0:
+        console.print(f"[yellow]⚠ Skipping {symbol}: no quantity data[/yellow]")
+        continue
+
     weighted_price = (symbol_data['Purchase Price'] * symbol_data['Quantity']).sum() / total_qty
+
+    # Skip if price is NaN
+    if pd.isna(weighted_price):
+        console.print(f"[yellow]⚠ Skipping {symbol}: no price data[/yellow]")
+        continue
 
     holdings.append({
         'symbol': symbol,
