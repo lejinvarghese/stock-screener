@@ -101,7 +101,22 @@ Access the web interface at: **http://localhost:8000** (or your chosen port)
 ## 🆕 New Features - Test Commands
 
 ### 1. Sell Signal Analysis
-Check your holdings for stop-loss, trailing stops, and technical breakdowns:
+
+#### Analyze Your Portfolio from CSV
+Check all your holdings from `data/inputs/my_stocks.csv`:
+
+```sh
+# Make sure the app is running first (python app.py --port 8000)
+python analyze_my_stocks.py
+```
+
+This will analyze all positions in your CSV and show:
+- **HIGH PRIORITY**: Stop-loss hits, trailing stops triggered, technical breakdowns
+- **MEDIUM PRIORITY**: Fundamental deterioration (earnings decline, high debt, overvaluation)
+- **HOLD**: Positions with no issues detected
+
+#### Analyze Specific Holdings via API
+Check individual holdings for stop-loss, trailing stops, and technical breakdowns:
 
 ```sh
 curl -X POST http://localhost:8000/check_sells/ \
