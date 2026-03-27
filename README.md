@@ -96,6 +96,96 @@ tail -f app.log
 
 Access the web interface at: **http://localhost:8000** (or your chosen port)
 
+---
+
+## 🆕 New Features - Test Commands
+
+### 1. Sell Signal Analysis
+Check your holdings for stop-loss, trailing stops, and technical breakdowns:
+
+```sh
+curl -X POST http://localhost:8000/check_sells/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "holdings": [
+      {"symbol": "AAPL", "entry_price": 250, "shares": 10},
+      {"symbol": "TSLA", "entry_price": 400, "shares": 5}
+    ]
+  }'
+```
+
+### 2. Portfolio Risk Check
+Check position limits, concentration risk, and rebalancing needs:
+
+```sh
+curl -X POST http://localhost:8000/check_portfolio/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "current_portfolio": {"AAPL": 0.35, "MSFT": 0.25, "GOOGL": 0.20, "TSLA": 0.20},
+    "target_portfolio": {"AAPL": 0.30, "MSFT": 0.25, "GOOGL": 0.25, "TSLA": 0.20}
+  }'
+```
+
+### 3. Advanced Optimization Methods
+
+Try different optimization strategies:
+
+```sh
+# Minimum Volatility (lowest risk)
+curl -X POST http://localhost:8000/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"method": "min_vol", "budget": 10000}'
+
+# Hierarchical Risk Parity (best diversification)
+curl -X POST http://localhost:8000/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"method": "hrp", "budget": 10000}'
+
+# CVaR - Tail Risk Optimization
+curl -X POST http://localhost:8000/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"method": "cvar", "budget": 10000}'
+```
+
+**Available Methods:**
+
+| Method | Description | Best For | Risk Level |
+|--------|-------------|----------|------------|
+| `max_sharpe` | Maximum Sharpe ratio | Best risk-adjusted returns | Medium |
+| `min_vol` | Minimum volatility | Lowest risk portfolio | Low |
+| `hrp` | Hierarchical Risk Parity | Best diversification | Medium |
+| `cvar` | Conditional Value at Risk | Tail risk protection | Medium-Low |
+| `semivariance` | Downside risk optimization | Downside protection | Medium |
+
+### 4. Backtesting
+Test historical performance of a portfolio:
+
+```sh
+curl -X POST http://localhost:8000/backtest/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tickers": ["AAPL", "MSFT", "GOOGL"],
+    "weights": {"AAPL": 0.4, "MSFT": 0.35, "GOOGL": 0.25},
+    "start_date": "2022-01-01",
+    "initial_capital": 10000,
+    "rebalance_freq": "monthly"
+  }'
+```
+
+### 5. Compare Optimization Methods
+Compare multiple methods side-by-side:
+
+```sh
+curl -X POST http://localhost:8000/compare_methods/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tickers": ["AAPL", "MSFT", "GOOGL", "NVDA"],
+    "methods": ["max_sharpe", "min_vol", "hrp"]
+  }'
+```
+
+---
+
 ## Terminal/CLI Usage
 
 ### Basic Operations
