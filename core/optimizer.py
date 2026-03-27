@@ -163,7 +163,7 @@ def optimize(
                 optimization_successful = True
                 break
             except Exception as e:
-            console.print(f"[yellow]Warning: {solver} solver failed: {str(e)}[/yellow]")
+                console.print(f"[yellow]Warning: {solver} solver failed: {str(e)}[/yellow]")
                 # Reset the optimizer for next attempt
                 if method == "semivariance":
                     historical_returns = expected_returns.returns_from_prices(prices)

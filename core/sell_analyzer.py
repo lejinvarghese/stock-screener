@@ -65,6 +65,10 @@ class SellAnalyzer:
                     "error": "insufficient_data",
                 }
 
+            # Handle MultiIndex columns (yfinance sometimes returns MultiIndex)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.droplevel(1)
+
             # Current price
             current_price = float(df["Close"].iloc[-1])
             gain_loss = (current_price - entry_price) / entry_price
