@@ -31,33 +31,175 @@ Covariance Matrix:
 Covariance Matrix (Cluster Map):
 ![Covariance Cluster Map](docs/pf_cov_clusters.png)
 
-## Setup & Run
+## Quick Start (TL;DR)
 
-### Prerequisites
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-
-### Installation
-```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv --python 3.13
-
+```bash
+# 1. Setup environment
+curl -LsSf https://astral.sh/uv/install.sh | sh  # Install uv
+uv venv --python 3.11
 source .venv/bin/activate
 uv pip install -r requirements.txt
 
-# Create .env file with required variables
+# 2. Configure (create .env from .env.example and add your credentials)
+cp .env.example .env
+nano .env  # or vim, code, etc.
+
+# 3. Run
+python app.py --port 5004
+
+# 4. Open browser → http://localhost:5004
+```
+
+## Setup & Run
+
+### Prerequisites
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
+- Python 3.11+ (required for numpy 2.x and pandas 2.x)
+
+### Installation
+```sh
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment with Python 3.11
+uv venv --python 3.11
+
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Create .env file with required variables (see .env.example)
 ```
 
 ### Run
+
+
+#### Terminal/CLI Usage
 ```sh
+# Activate the virtual environment
 source .venv/bin/activate
+
+# Run on default port (5004)
 python app.py
+
+# Or specify a custom port
+python app.py --port 8000
+
+# Run in background
+python app.py --port 5004 > app.log 2>&1 &
+
+# View logs (if running in background)
+tail -f app.log
 ```
 
-## Curl samples
+Access the web interface at: **http://localhost:5004** (or your chosen port)
+
+## Terminal/CLI Usage
+
+### Basic Operations
 
 ```sh
-curl --request POST --url https://api.telegram.org/bot$TELEGRAM_TOKEN/setWebhook --header 'content-type: application/json' --data '{"url": "https://2j48cpk83h.execute-api.us-east-1.amazonaws.com/dev"}'
-#https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo
+# Start the app (runs on http://localhost:5004)
+source .venv/bin/activate
+python app.py
+
+# Custom port
+python app.py --port 8080
+
+# Background mode
+python app.py --port 5004 > app.log 2>&1 &
+
+# Check if app is running
+curl http://localhost:5004/
+
+# View logs (if running in background)
+tail -f app.log
+
+# Stop background process
+pkill -f "python.*app.py"
+```
+
+### API Testing with curl
+
+#### Watchlist Management
+```sh
+# Get all symbols in watchlist
+curl http://localhost:5004/watchlist/
+
+# Add a stock symbol
+curl -X POST http://localhost:5004/watchlist/add \
+  -H "Content-Type: application/json" \
+  -d '{"symbol": "AAPL"}'
+
+# Add multiple stocks
+for symbol in MSFT GOOGL NVDA TSLA; do
+  curl -X POST http://localhost:5004/watchlist/add \
+    -H "Content-Type: application/json" \
+    -d "{\"symbol\": \"$symbol\"}"
+done
+
+# Remove a stock
+curl -X POST http://localhost:5004/watchlist/remove \
+  -H "Content-Type: application/json" \
+  -d '{"symbol": "AAPL"}'
+
+# Clear entire watchlist
+curl -X POST http://localhost:5004/watchlist/clear
+```
+
+#### Portfolio Optimization
+```sh
+# Run portfolio analysis with default settings
+curl -X POST http://localhost:5004/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "threshold": 0.05,
+    "budget": 10000,
+    "method": "max_sharpe"
+  }'
+
+# Use semivariance method (downside risk optimization)
+curl -X POST http://localhost:5004/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "threshold": 0.01,
+    "budget": 25000,
+    "method": "semivariance"
+  }'
+
+# Save results to file
+curl -X POST http://localhost:5004/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"threshold": 0.05, "budget": 10000, "method": "max_sharpe"}' \
+  -o portfolio_results.json
+
+# View results
+cat portfolio_results.json | python -m json.tool
+```
+
+#### Import/Export Watchlist
+```sh
+# Export current watchlist to CSV
+curl http://localhost:5004/watchlist/export -o my_watchlist.csv
+
+# Import watchlist from CSV
+curl -X POST http://localhost:5004/watchlist/import \
+  -H "Content-Type: application/json" \
+  -d "{\"csv_content\": \"$(cat my_watchlist.csv)\"}"
+```
+
+### Telegram Bot Setup (Optional)
+```sh
+# Set webhook for Telegram bot
+curl --request POST \
+  --url https://api.telegram.org/bot$TELEGRAM_TOKEN/setWebhook \
+  --header 'content-type: application/json' \
+  --data '{"url": "https://your-domain.com/webhook"}'
+
+# Check webhook info
+curl https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo
 ```
 
 ## Environment Variables
