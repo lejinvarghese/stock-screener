@@ -18,7 +18,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 from dotenv import load_dotenv
-from pypfopt.efficient_frontier import EfficientFrontier
+from pypfopt.efficient_frontier import EfficientFrontier, EfficientCVaR
+from pypfopt.hierarchical_portfolio import HRPOpt
 from pypfopt import (
     risk_models,
     expected_returns,
@@ -64,38 +65,60 @@ def optimize(
 ):
     """
     Optimize portfolio using specified method
+
     Available methods:
-    - max_sharpe: Maximum Sharpe ratio using EfficientFrontier
-    - semivariance: EfficientSemivariance for downside risk optimization
+    - max_sharpe: Maximum Sharpe ratio (risk-adjusted returns)
+    - min_vol: Minimum volatility (lowest risk)
+    - hrp: Hierarchical Risk Parity (best diversification)
+    - cvar: Conditional Value at Risk (tail risk optimization)
+    - semivariance: Downside risk optimization
     """
     console.print(f"[blue]Using optimization method: {method}[/blue]")
-    
+
+    # Calculate expected returns
     mu = expected_returns.ema_historical_return(prices)
     gamma = 0.3  # shrinkage intensity
     mu = (1 - gamma) * mu + gamma * mu.mean()
 
     console.print("[blue]Generating portfolio optimization charts...[/blue]")
-    
+
     # Always calculate covariance matrix for plotting
     covariance_matrix = risk_models.CovarianceShrinkage(
         prices, log_returns=True
     ).ledoit_wolf()
-    
-    if method == "semivariance":
-        # Use EfficientSemivariance for downside risk optimization
+
+    # Select optimizer based on method
+    if method == "hrp":
+        # Hierarchical Risk Parity - best diversification
+        historical_returns = expected_returns.returns_from_prices(prices)
+        ef_optimizer = HRPOpt(historical_returns)
+        console.print("[blue]Using HRP for hierarchical diversification[/blue]")
+    elif method == "cvar":
+        # Conditional Value at Risk - tail risk focus
+        historical_returns = expected_returns.returns_from_prices(prices)
+        ef_optimizer = EfficientCVaR(mu, historical_returns, beta=0.95)
+        console.print("[blue]Using CVaR for tail risk optimization (95% confidence)[/blue]")
+    elif method == "semivariance":
+        # EfficientSemivariance for downside risk
         historical_returns = expected_returns.returns_from_prices(prices)
         ef_optimizer = EfficientSemivariance(mu, historical_returns)
-        console.print("[blue]Using EfficientSemivariance for downside risk optimization[/blue]")
+        console.print("[blue]Using Semivariance for downside risk optimization[/blue]")
     else:
-        # Default to EfficientFrontier with max Sharpe
+        # Default: EfficientFrontier (max_sharpe or min_vol)
         ef_optimizer = EfficientFrontier(mu, covariance_matrix)
-        console.print("[blue]Using EfficientFrontier for maximum Sharpe ratio[/blue]")
+        if method == "min_vol":
+            console.print("[blue]Using Min Volatility for lowest risk portfolio[/blue]")
+        else:
+            console.print("[blue]Using Max Sharpe for best risk-adjusted returns[/blue]")
 
     initial_weights = np.array([1 / n_tickers] * n_tickers)
     
     # Add objectives based on optimization method
-    if method == "semivariance":
-        # EfficientSemivariance supports fewer objectives
+    if method == "hrp":
+        # HRP doesn't use objectives, just optimize
+        pass
+    elif method in ["semivariance", "cvar"]:
+        # These support fewer objectives
         ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.01)
     else:
         # EfficientFrontier supports more objectives
@@ -103,41 +126,60 @@ def optimize(
         ef_optimizer.add_objective(
             objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
         )
-    
-    # Try optimization with fallback solvers
-    solvers_to_try = ['OSQP', 'ECOS', 'SCS']
+
+    # Run optimization
     optimization_successful = False
-    
-    for solver in solvers_to_try:
+
+    if method == "hrp":
+        # HRP optimization (no solver needed)
         try:
-            console.print(f"[dim]Attempting optimization with {solver} solver...[/dim]")
-            ef_optimizer._solver = solver
-            
-            # Run optimization based on method
-            if method == "semivariance":
-                # For semivariance, target a reasonable return (20%)
-                ef_optimizer.efficient_return(0.20)
-            else:
-                # Default max Sharpe optimization
-                ef_optimizer.max_sharpe()
-                
-            console.print(f"[green]Optimization successful with {solver} solver[/green]")
+            weights = ef_optimizer.optimize()
+            console.print("[green]HRP optimization successful[/green]")
             optimization_successful = True
-            break
         except Exception as e:
+            console.print(f"[red]HRP optimization failed: {e}[/red]")
+            raise
+
+    else:
+        # Try optimization with fallback solvers for other methods
+        solvers_to_try = ["OSQP", "ECOS", "SCS"]
+
+        for solver in solvers_to_try:
+            try:
+                console.print(f"[dim]Attempting optimization with {solver} solver...[/dim]")
+                ef_optimizer._solver = solver
+
+                # Run optimization based on method
+                if method == "semivariance":
+                    ef_optimizer.efficient_return(0.20)
+                elif method == "cvar":
+                    ef_optimizer.min_cvar()
+                elif method == "min_vol":
+                    ef_optimizer.min_volatility()
+                else:  # max_sharpe
+                    ef_optimizer.max_sharpe()
+
+                console.print(f"[green]Optimization successful with {solver} solver[/green]")
+                optimization_successful = True
+                break
+            except Exception as e:
             console.print(f"[yellow]Warning: {solver} solver failed: {str(e)}[/yellow]")
-            # Reset the optimizer for next attempt
-            if method == "semivariance":
-                historical_returns = expected_returns.returns_from_prices(prices)
-                ef_optimizer = EfficientSemivariance(mu, historical_returns)
-                ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
-            else:
-                ef_optimizer = EfficientFrontier(mu, covariance_matrix)
-                ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
-                ef_optimizer.add_objective(
-                    objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
-                )
-            continue
+                # Reset the optimizer for next attempt
+                if method == "semivariance":
+                    historical_returns = expected_returns.returns_from_prices(prices)
+                    ef_optimizer = EfficientSemivariance(mu, historical_returns)
+                    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+                elif method == "cvar":
+                    historical_returns = expected_returns.returns_from_prices(prices)
+                    ef_optimizer = EfficientCVaR(mu, historical_returns, beta=0.95)
+                    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+                else:
+                    ef_optimizer = EfficientFrontier(mu, covariance_matrix)
+                    ef_optimizer.add_objective(objective_functions.L2_reg, gamma=0.1)
+                    ef_optimizer.add_objective(
+                        objective_functions.transaction_cost, w_prev=initial_weights, k=0.001
+                    )
+                continue
     
     if not optimization_successful:
         console.print("[red]ERROR: All solvers failed. Trying simplified optimization...[/red]")
@@ -170,7 +212,12 @@ def optimize(
     except:
         pass
 
-    cleaned_weights = ef_optimizer.clean_weights(cutoff=cutoff)
+    # Clean weights (HRP has different API)
+    if method == "hrp":
+        cleaned_weights = ef_optimizer.clean_weights(cutoff=cutoff)
+    else:
+        cleaned_weights = ef_optimizer.clean_weights(cutoff=cutoff)
+
     filtered_weights = {
         stock: weight for stock, weight in cleaned_weights.items() if weight > 0
     }
