@@ -45,9 +45,9 @@ cp .env.example .env
 nano .env  # or vim, code, etc.
 
 # 3. Run
-python app.py --port 5004
+python app.py --port 8000
 
-# 4. Open browser → http://localhost:5004
+# 4. Open browser → http://localhost:8000
 ```
 
 ## Setup & Run
@@ -81,27 +81,27 @@ uv pip install -r requirements.txt
 # Activate the virtual environment
 source .venv/bin/activate
 
-# Run on default port (5004)
+# Run on default port (8000)
 python app.py
 
 # Or specify a custom port
 python app.py --port 8000
 
 # Run in background
-python app.py --port 5004 > app.log 2>&1 &
+python app.py --port 8000 > app.log 2>&1 &
 
 # View logs (if running in background)
 tail -f app.log
 ```
 
-Access the web interface at: **http://localhost:5004** (or your chosen port)
+Access the web interface at: **http://localhost:8000** (or your chosen port)
 
 ## Terminal/CLI Usage
 
 ### Basic Operations
 
 ```sh
-# Start the app (runs on http://localhost:5004)
+# Start the app (runs on http://localhost:8000)
 source .venv/bin/activate
 python app.py
 
@@ -109,10 +109,10 @@ python app.py
 python app.py --port 8080
 
 # Background mode
-python app.py --port 5004 > app.log 2>&1 &
+python app.py --port 8000 > app.log 2>&1 &
 
 # Check if app is running
-curl http://localhost:5004/
+curl http://localhost:8000/
 
 # View logs (if running in background)
 tail -f app.log
@@ -126,33 +126,33 @@ pkill -f "python.*app.py"
 #### Watchlist Management
 ```sh
 # Get all symbols in watchlist
-curl http://localhost:5004/watchlist/
+curl http://localhost:8000/watchlist/
 
 # Add a stock symbol
-curl -X POST http://localhost:5004/watchlist/add \
+curl -X POST http://localhost:8000/watchlist/add \
   -H "Content-Type: application/json" \
   -d '{"symbol": "AAPL"}'
 
 # Add multiple stocks
 for symbol in MSFT GOOGL NVDA TSLA; do
-  curl -X POST http://localhost:5004/watchlist/add \
+  curl -X POST http://localhost:8000/watchlist/add \
     -H "Content-Type: application/json" \
     -d "{\"symbol\": \"$symbol\"}"
 done
 
 # Remove a stock
-curl -X POST http://localhost:5004/watchlist/remove \
+curl -X POST http://localhost:8000/watchlist/remove \
   -H "Content-Type: application/json" \
   -d '{"symbol": "AAPL"}'
 
 # Clear entire watchlist
-curl -X POST http://localhost:5004/watchlist/clear
+curl -X POST http://localhost:8000/watchlist/clear
 ```
 
 #### Portfolio Optimization
 ```sh
 # Run portfolio analysis with default settings
-curl -X POST http://localhost:5004/recommend_stocks/ \
+curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
   -d '{
     "threshold": 0.05,
@@ -161,7 +161,7 @@ curl -X POST http://localhost:5004/recommend_stocks/ \
   }'
 
 # Use semivariance method (downside risk optimization)
-curl -X POST http://localhost:5004/recommend_stocks/ \
+curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
   -d '{
     "threshold": 0.01,
@@ -170,7 +170,7 @@ curl -X POST http://localhost:5004/recommend_stocks/ \
   }'
 
 # Save results to file
-curl -X POST http://localhost:5004/recommend_stocks/ \
+curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
   -d '{"threshold": 0.05, "budget": 10000, "method": "max_sharpe"}' \
   -o portfolio_results.json
@@ -182,10 +182,10 @@ cat portfolio_results.json | python -m json.tool
 #### Import/Export Watchlist
 ```sh
 # Export current watchlist to CSV
-curl http://localhost:5004/watchlist/export -o my_watchlist.csv
+curl http://localhost:8000/watchlist/export -o my_watchlist.csv
 
 # Import watchlist from CSV
-curl -X POST http://localhost:5004/watchlist/import \
+curl -X POST http://localhost:8000/watchlist/import \
   -H "Content-Type: application/json" \
   -d "{\"csv_content\": \"$(cat my_watchlist.csv)\"}"
 ```
@@ -202,6 +202,16 @@ curl --request POST \
 curl https://api.telegram.org/bot$TELEGRAM_TOKEN/getWebhookInfo
 ```
 
+## Optimization Methods Available
+
+| Method | Description | Best For | Risk Level |
+|--------|-------------|----------|------------|
+| `max_sharpe` | Maximum Sharpe ratio | Best risk-adjusted returns | Medium |
+| `min_vol` | Minimum volatility | Lowest risk portfolio | Low |
+| `hrp` | Hierarchical Risk Parity | Best diversification | Medium |
+| `cvar` | Conditional Value at Risk | Tail risk protection (95%) | Medium-Low |
+| `semivariance` | Downside risk optimization | Downside protection | Medium |
+
 ## Environment Variables
 
 Must have a `*.env` with the following variables for full functionality:
@@ -214,3 +224,30 @@ WEALTHSIMPLE_PASSWORD=XXX
 ```
 
 Note: Wealthsimple has an added layer of security with an OTP (One Time Password) that you'll need to enter in the terminal everytime you run the application.
+
+## API Endpoints
+
+### Portfolio Optimization
+- `POST /recommend_stocks/` - Optimize portfolio with multiple methods
+  - Parameters: `method`, `budget`, `threshold`
+  - Methods: `max_sharpe`, `min_vol`, `hrp`, `cvar`, `semivariance`
+
+### Sell Signals (New)
+- `POST /check_sells/` - Analyze holdings for sell signals
+  - Detects: Stop-loss, trailing stops, technical breakdowns, fundamental issues
+- `POST /check_portfolio/` - Check portfolio-level risks
+  - Checks: Position limits, concentration, rebalancing needs
+
+### Backtesting (New)
+- `POST /backtest/` - Backtest a portfolio allocation
+  - Returns: Total return, Sharpe, Sortino, max drawdown, equity curve
+- `POST /compare_methods/` - Compare optimization methods
+  - Returns: Side-by-side performance comparison
+
+### Watchlist Management
+- `GET /watchlist/` - Get all symbols
+- `POST /watchlist/add` - Add symbol
+- `POST /watchlist/remove` - Remove symbol
+- `POST /watchlist/clear` - Clear watchlist
+- `POST /watchlist/import` - Import from CSV
+- `GET /watchlist/export` - Export to CSV
