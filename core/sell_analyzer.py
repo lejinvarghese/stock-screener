@@ -317,11 +317,11 @@ class SellAnalyzer:
             tech_result["fundamental_metrics"] = fund_result.get("metrics", {})
 
             # Overall recommendation
-            if tech_result["recommendation"] == "SELL":
+            if tech_result.get("recommendation") == "SELL":
                 tech_result["priority"] = "HIGH"
             elif fund_result.get("recommend_review", False):
                 tech_result["priority"] = "MEDIUM"
-                if tech_result["recommendation"] == "HOLD":
+                if tech_result.get("recommendation") == "HOLD":
                     tech_result["recommendation"] = "REVIEW"
             else:
                 tech_result["priority"] = "LOW"
