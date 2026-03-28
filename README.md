@@ -156,7 +156,13 @@ curl -X POST http://localhost:8000/check_portfolio/ \
 
 Try different optimization strategies:
 
+**Via API (curl):**
 ```sh
+# Maximum Sharpe Ratio (default - best risk-adjusted returns)
+curl -X POST http://localhost:8000/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"method": "max_sharpe", "budget": 10000}'
+
 # Minimum Volatility (lowest risk)
 curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
@@ -167,10 +173,33 @@ curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
   -d '{"method": "hrp", "budget": 10000}'
 
-# CVaR - Tail Risk Optimization
+# CVaR - Tail Risk Optimization (95% confidence)
 curl -X POST http://localhost:8000/recommend_stocks/ \
   -H "Content-Type: application/json" \
   -d '{"method": "cvar", "budget": 10000}'
+
+# Semivariance - Downside Risk Protection
+curl -X POST http://localhost:8000/recommend_stocks/ \
+  -H "Content-Type: application/json" \
+  -d '{"method": "semivariance", "budget": 10000}'
+```
+
+**Via Python CLI:**
+```sh
+# Maximum Sharpe Ratio
+python core/optimizer.py --method max_sharpe --budget 10000
+
+# Minimum Volatility
+python core/optimizer.py --method min_vol --budget 10000
+
+# Hierarchical Risk Parity
+python core/optimizer.py --method hrp --budget 10000
+
+# CVaR - Tail Risk
+python core/optimizer.py --method cvar --budget 10000
+
+# Semivariance - Downside Risk
+python core/optimizer.py --method semivariance --budget 10000
 ```
 
 **Available Methods:**

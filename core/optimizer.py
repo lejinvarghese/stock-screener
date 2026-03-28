@@ -264,16 +264,42 @@ def optimize(
 
     console.print(weights_table)
 
-    perf = ef_optimizer.portfolio_performance(verbose=True)
+    # Portfolio performance (different methods return different tuples)
     perf_table = Table(
         title="Portfolio Performance", show_header=True, header_style="bold blue"
     )
     perf_table.add_column("Metric", style="cyan")
     perf_table.add_column("Budget", style="yellow")
 
-    perf_table.add_row("Expected Annual Return", f"{perf[0]*100:.2f}%")
-    perf_table.add_row("Annual Volatility", f"{perf[1]*100:.2f}%")
-    perf_table.add_row("Sharpe Ratio", f"{perf[2]:.2f}")
+    # Initialize perf to default values
+    perf = (0.0, 0.0, 0.0)
+
+    try:
+        if method in ["cvar", "semivariance"]:
+            # CVaR and Semivariance don't support portfolio_performance()
+            # Calculate manually from weights
+            weight_array = np.array([filtered_weights[ticker] for ticker in filtered_weights.keys()])
+            mu_subset = mu[list(filtered_weights.keys())]
+            cov_subset = covariance_matrix.loc[list(filtered_weights.keys()), list(filtered_weights.keys())]
+
+            portfolio_return = np.dot(weight_array, mu_subset)
+            portfolio_vol = np.sqrt(np.dot(weight_array, np.dot(cov_subset, weight_array)))
+            sharpe = portfolio_return / portfolio_vol if portfolio_vol > 0 else 0
+
+            perf = (portfolio_return, portfolio_vol, sharpe)
+
+            perf_table.add_row("Expected Annual Return", f"{portfolio_return*100:.2f}%")
+            perf_table.add_row("Annual Volatility", f"{portfolio_vol*100:.2f}%")
+            perf_table.add_row("Sharpe Ratio", f"{sharpe:.2f}")
+        else:
+            # Standard methods (max_sharpe, min_vol, hrp)
+            perf = ef_optimizer.portfolio_performance(verbose=True)
+            perf_table.add_row("Expected Annual Return", f"{perf[0]*100:.2f}%")
+            perf_table.add_row("Annual Volatility", f"{perf[1]*100:.2f}%")
+            perf_table.add_row("Sharpe Ratio", f"{perf[2]:.2f}")
+    except Exception as e:
+        console.print(f"[yellow]Warning: Could not calculate performance metrics: {e}[/yellow]")
+        perf_table.add_row("Performance", "Metrics unavailable")
 
     console.print(perf_table)
 
@@ -411,8 +437,8 @@ def run(
 @click.option(
     "--method",
     default="max_sharpe",
-    type=click.Choice(['max_sharpe', 'semivariance']),
-    help="Optimization method: max_sharpe or semivariance (default: max_sharpe)"
+    type=click.Choice(['max_sharpe', 'min_vol', 'hrp', 'cvar', 'semivariance']),
+    help="Optimization method (default: max_sharpe)"
 )
 def main(threshold, budget, send_telegram, method):
     """Portfolio optimization with sample stocks"""
